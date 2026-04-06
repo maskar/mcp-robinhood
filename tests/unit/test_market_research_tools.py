@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from open_stocks_mcp.tools.robinhood_market_data_tools import (
+from mcp_robinhood.tools.robinhood_market_data_tools import (
     get_stock_earnings,
     get_stock_events,
     get_stock_level2_data,
@@ -21,9 +21,9 @@ class TestTopMoversSP500:
 
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -78,9 +78,9 @@ class TestTopMoversSP500:
 
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -138,9 +138,9 @@ class TestTopMoversSP500:
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -170,7 +170,7 @@ class TestTopMoversSP500:
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -193,9 +193,9 @@ class TestStockRatings:
 
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -260,9 +260,9 @@ class TestStockRatings:
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -294,9 +294,9 @@ class TestStockEarnings:
 
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -367,9 +367,9 @@ class TestStockEarnings:
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
     @pytest.mark.journey_research
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -399,9 +399,9 @@ class TestStockEarnings:
 class TestStockNews:
     """Test stock news functionality."""
 
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -470,9 +470,9 @@ class TestStockNews:
 
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -502,9 +502,9 @@ class TestStockNews:
 class TestStockSplits:
     """Test stock splits functionality."""
 
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -565,9 +565,9 @@ class TestStockSplits:
 
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -597,9 +597,9 @@ class TestStockSplits:
 class TestStockEvents:
     """Test stock events functionality."""
 
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -656,9 +656,9 @@ class TestStockEvents:
 
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -688,9 +688,9 @@ class TestStockEvents:
 class TestStockLevel2Data:
     """Test stock Level II data functionality."""
 
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -748,9 +748,9 @@ class TestStockLevel2Data:
 
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -779,9 +779,9 @@ class TestStockLevel2Data:
 
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.execute_with_retry")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_session_manager")
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.get_rate_limiter")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.execute_with_retry")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_session_manager")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.get_rate_limiter")
     @pytest.mark.journey_research
     @pytest.mark.unit
     @pytest.mark.asyncio

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from open_stocks_mcp.server.app import attempt_login, create_mcp_server, mcp
+from mcp_robinhood.server.app import attempt_login, create_mcp_server, mcp
 
 
 @pytest.mark.journey_system
@@ -19,8 +19,8 @@ class TestServerApp:
     def test_create_mcp_server_returns_mcp_instance(self) -> None:
         """Test create_mcp_server returns the global mcp instance."""
         with (
-            patch("open_stocks_mcp.server.app.load_config") as mock_config,
-            patch("open_stocks_mcp.server.app.setup_logging") as mock_logging,
+            patch("mcp_robinhood.server.app.load_config") as mock_config,
+            patch("mcp_robinhood.server.app.setup_logging") as mock_logging,
         ):
             mock_config.return_value = MagicMock()
             result = create_mcp_server()
@@ -33,7 +33,7 @@ class TestServerApp:
         """Test create_mcp_server with provided config."""
         mock_config = MagicMock()
 
-        with patch("open_stocks_mcp.server.app.setup_logging") as mock_logging:
+        with patch("mcp_robinhood.server.app.setup_logging") as mock_logging:
             result = create_mcp_server(mock_config)
 
             assert result is mcp
@@ -55,13 +55,13 @@ class TestAttemptLogin:
 
         with (
             patch(
-                "open_stocks_mcp.server.app.get_session_manager",
+                "mcp_robinhood.server.app.get_session_manager",
                 return_value=mock_session_manager,
             ),
             patch(
-                "open_stocks_mcp.server.app.asyncio.run", return_value=True
+                "mcp_robinhood.server.app.asyncio.run", return_value=True
             ) as mock_run,
-            patch("open_stocks_mcp.server.app.logger") as mock_logger,
+            patch("mcp_robinhood.server.app.logger") as mock_logger,
         ):
             # Should not raise any exception
             attempt_login("testuser", "testpass")
@@ -80,14 +80,14 @@ class TestAttemptLogin:
 
         with (
             patch(
-                "open_stocks_mcp.server.app.get_session_manager",
+                "mcp_robinhood.server.app.get_session_manager",
                 return_value=mock_session_manager,
             ),
             patch(
-                "open_stocks_mcp.server.app.asyncio.run", return_value=False
+                "mcp_robinhood.server.app.asyncio.run", return_value=False
             ) as mock_run,
-            patch("open_stocks_mcp.server.app.logger") as mock_logger,
-            patch("open_stocks_mcp.server.app.sys.exit") as mock_exit,
+            patch("mcp_robinhood.server.app.logger") as mock_logger,
+            patch("mcp_robinhood.server.app.sys.exit") as mock_exit,
         ):
             attempt_login("testuser", "testpass")
 
@@ -107,11 +107,11 @@ class TestAttemptLogin:
 
         with (
             patch(
-                "open_stocks_mcp.server.app.get_session_manager",
+                "mcp_robinhood.server.app.get_session_manager",
                 return_value=mock_session_manager,
             ),
-            patch("open_stocks_mcp.server.app.logger") as mock_logger,
-            patch("open_stocks_mcp.server.app.sys.exit") as mock_exit,
+            patch("mcp_robinhood.server.app.logger") as mock_logger,
+            patch("mcp_robinhood.server.app.sys.exit") as mock_exit,
         ):
             attempt_login("testuser", "testpass")
 

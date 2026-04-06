@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from open_stocks_mcp.tools.robinhood_options_tools import (
+from mcp_robinhood.tools.robinhood_options_tools import (
     find_tradable_options,
     get_aggregate_positions,
     get_all_option_positions,
@@ -20,7 +20,7 @@ from open_stocks_mcp.tools.robinhood_options_tools import (
 class TestOptionsChains:
     """Test options chains retrieval."""
 
-    @patch("open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_chains")
+    @patch("mcp_robinhood.tools.robinhood_options_tools.rh.options.get_chains")
     @pytest.mark.journey_options
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -56,7 +56,7 @@ class TestOptionsChains:
 
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
-    @patch("open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_chains")
+    @patch("mcp_robinhood.tools.robinhood_options_tools.rh.options.get_chains")
     @pytest.mark.journey_options
     @pytest.mark.unit
     @pytest.mark.asyncio
@@ -89,7 +89,7 @@ class TestFindOptions:
     """Test find tradable options functionality."""
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.find_options_by_expiration"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.find_options_by_expiration"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -122,7 +122,7 @@ class TestFindOptions:
         assert result["result"]["status"] == "success"
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.find_options_by_expiration"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.find_options_by_expiration"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -169,7 +169,7 @@ class TestOptionMarketData:
     """Test option market data retrieval."""
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_option_market_data_by_id"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_option_market_data_by_id"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -205,7 +205,7 @@ class TestOptionMarketData:
     @pytest.mark.exception_test
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_option_market_data_by_id"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_option_market_data_by_id"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -236,7 +236,7 @@ class TestOptionHistoricals:
     """Test option historical data retrieval."""
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_option_historicals"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_option_historicals"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -313,7 +313,7 @@ class TestOptionPositions:
     """Test option positions retrieval."""
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_aggregate_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_aggregate_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -351,7 +351,7 @@ class TestOptionPositions:
         assert result["result"]["status"] == "success"
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_aggregate_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_aggregate_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -368,7 +368,7 @@ class TestOptionPositions:
         assert result["result"]["status"] == "no_data"
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_all_option_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_all_option_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -412,7 +412,7 @@ class TestOptionPositions:
         assert result["result"]["status"] == "success"
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_open_option_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_open_option_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -444,7 +444,7 @@ class TestOptionPositions:
         assert result["result"]["status"] == "success"
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_open_option_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_open_option_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -464,10 +464,10 @@ class TestOptionPositions:
         assert result["result"]["status"] == "no_data"
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_option_instrument_data_by_id"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_option_instrument_data_by_id"
     )
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_open_option_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_open_option_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit
@@ -523,7 +523,7 @@ class TestOptionPositions:
         mock_instrument_data.assert_called_once_with("option456")
 
     @patch(
-        "open_stocks_mcp.tools.robinhood_options_tools.rh.options.get_open_option_positions"
+        "mcp_robinhood.tools.robinhood_options_tools.rh.options.get_open_option_positions"
     )
     @pytest.mark.journey_options
     @pytest.mark.unit

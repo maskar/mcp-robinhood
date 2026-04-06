@@ -1,4 +1,4 @@
-"""Tests for open_stocks_mcp package.
+"""Tests for mcp_robinhood package.
 
 Test Structure:
 - unit/: Fast isolated component tests

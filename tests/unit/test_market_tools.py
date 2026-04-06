@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from open_stocks_mcp.tools.robinhood_market_data_tools import (
+from mcp_robinhood.tools.robinhood_market_data_tools import (
     get_stocks_by_tag,
     get_top_100,
     get_top_movers,
@@ -17,7 +17,7 @@ class TestMarketTools:
 
     @pytest.mark.journey_market_data
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.rh.get_top_movers")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.rh.get_top_movers")
     @pytest.mark.asyncio
     async def test_get_top_movers_success(self, mock_movers: Any) -> None:
         """Test successful top movers retrieval."""
@@ -34,7 +34,7 @@ class TestMarketTools:
 
     @pytest.mark.journey_market_data
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.rh.get_top_100")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.rh.get_top_100")
     @pytest.mark.asyncio
     async def test_get_top_100_success(self, mock_top100: Any) -> None:
         """Test successful top 100 retrieval."""
@@ -51,7 +51,7 @@ class TestMarketTools:
     @pytest.mark.journey_market_data
     @pytest.mark.unit
     @patch(
-        "open_stocks_mcp.tools.robinhood_market_data_tools.rh.get_all_stocks_from_market_tag"
+        "mcp_robinhood.tools.robinhood_market_data_tools.rh.get_all_stocks_from_market_tag"
     )
     @pytest.mark.asyncio
     async def test_get_stocks_by_tag_success(self, mock_stocks: Any) -> None:
@@ -70,7 +70,7 @@ class TestMarketTools:
     @pytest.mark.skip(reason="Slow exception test - run with pytest -m exception_test")
     @pytest.mark.journey_market_data
     @pytest.mark.unit
-    @patch("open_stocks_mcp.tools.robinhood_market_data_tools.rh.get_top_movers")
+    @patch("mcp_robinhood.tools.robinhood_market_data_tools.rh.get_top_movers")
     @pytest.mark.asyncio
     async def test_get_top_movers_error(self, mock_movers: Any) -> None:
         """Test error handling for top movers."""

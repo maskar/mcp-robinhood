@@ -1,4 +1,0 @@
-# Persistent data directories - contains sensitive tokens and logs
-data/tokens/
-data/logs/
-!data/README.md

@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from dotenv import load_dotenv
 
-from open_stocks_mcp.tools.robinhood_account_tools import (
+from mcp_robinhood.tools.robinhood_account_tools import (
     get_account_info,
     get_portfolio,
     get_positions,

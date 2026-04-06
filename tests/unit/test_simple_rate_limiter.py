@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from open_stocks_mcp.tools.rate_limiter import RateLimiter, get_rate_limiter
+from mcp_robinhood.tools.rate_limiter import RateLimiter, get_rate_limiter
 
 
 class TestSimpleRateLimiter:
@@ -56,8 +56,8 @@ class TestSimpleRateLimiter:
         limiter2 = get_rate_limiter()
         assert limiter is limiter2
 
-    @patch("open_stocks_mcp.tools.rate_limiter.time.time")
-    @patch("open_stocks_mcp.tools.rate_limiter.asyncio.sleep")
+    @patch("mcp_robinhood.tools.rate_limiter.time.time")
+    @patch("mcp_robinhood.tools.rate_limiter.asyncio.sleep")
     @pytest.mark.journey_system
     @pytest.mark.unit
     @pytest.mark.asyncio

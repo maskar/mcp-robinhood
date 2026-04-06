@@ -1,301 +1,184 @@
-# Open Stocks MCP
+# mcp-robinhood
 
-An MCP (Model Context Protocol) server providing access to stock market data and trading capabilities through multiple broker APIs.
+Read-only MCP server for Robinhood portfolio data. Provides AI agents with
+access to account holdings, market data, and research — no trading capabilities.
+
+Forked from [open-stocks-mcp](https://github.com/Open-Agent-Tools/open-stocks-mcp)
+(Apache 2.0). Stripped to Robinhood-only, read-only tools.
 
 ## Features
 
-**🚀 Current Status: v0.7.0-dev - Multi-Broker Support (Robinhood + Schwab)**
-- ✅ **104 MCP tools** total - 80 Robinhood + 24 Schwab (4 deprecated)
-- ✅ **Multi-broker architecture** - Support for Robinhood and Charles Schwab
-- ✅ **Complete trading functionality** - stocks, options, order management
-- ✅ **Live trading validated** - Robinhood stock and options trading tested with real orders
-- ✅ **Production-ready** - HTTP transport, Docker support, comprehensive testing
-- ✅ **Schwab integration complete** - OAuth authentication, 24 tools ready for testing
-- 🔧 **Account details fixed** - Real financial data instead of N/A values
+### Account & Portfolio (7 tools)
 
-## Installation
+| Tool | Description |
+|------|-------------|
+| `account_info` | Basic account information |
+| `account_details` | Buying power, cash balances, margin status |
+| `portfolio` | High-level portfolio overview |
+| `positions` | Current stock positions with quantities and values |
+| `build_holdings` | Comprehensive holdings with cost basis and performance |
+| `build_user_profile` | Equity, cash, and dividend totals |
+| `day_trades` | Pattern day trading count and PDT status |
+
+### Crypto (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `crypto_positions` | Current positions with quantities, prices, and P&L |
+| `crypto_quote` | Real-time quote (mark, bid, ask, high, low, open) |
+| `crypto_info` | Detailed cryptocurrency metadata |
+
+### Market Data (10 tools)
+
+| Tool | Description |
+|------|-------------|
+| `stock_price` | Current price and basic metrics |
+| `stock_info` | Company fundamentals |
+| `search_stocks_tool` | Search by symbol or company name |
+| `market_hours` | Market hours and status |
+| `price_history` | Historical prices (day/week/month/year) |
+| `instruments_by_symbols` | Instrument metadata for multiple symbols |
+| `find_instruments` | Search instruments by various criteria |
+| `stock_quote_by_id` | Quote by Robinhood instrument ID |
+| `pricebook_by_symbol` | Level II order book (Gold required) |
+| `stock_level2_data` | Level II market data (Gold required) |
+
+### Market Research (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `top_movers_sp500` | S&P 500 top movers (up/down) |
+| `top_100_stocks` | 100 most popular stocks on Robinhood |
+| `top_movers` | Top 20 movers |
+| `stocks_by_tag` | Filter by category (technology, biotech, etc.) |
+| `stock_ratings` | Analyst ratings |
+| `stock_earnings` | Earnings reports and EPS data |
+| `stock_news` | News stories for a stock |
+| `stock_splits` | Stock split history |
+| `stock_events` | Corporate events for owned positions |
+
+### Dividends & Income (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `dividends` | All dividend payment history |
+| `total_dividends` | Total dividends received all-time |
+| `dividends_by_instrument` | Dividend history for a specific stock |
+| `interest_payments` | Interest from cash management |
+| `stock_loan_payments` | Stock lending program payments |
+
+### Options (8 tools, read-only)
+
+| Tool | Description |
+|------|-------------|
+| `options_chains` | Complete option chains for a symbol |
+| `find_options` | Find options with expiration/type filters |
+| `option_market_data` | Market data for a specific contract |
+| `option_historicals` | Historical price data for a contract |
+| `aggregate_option_positions` | Positions collapsed by underlying |
+| `all_option_positions` | All option positions ever held |
+| `open_option_positions` | Currently open positions |
+| `open_option_positions_with_details` | Open positions with call/put enrichment |
+
+### User Profile (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `account_profile` | Trading account configuration |
+| `basic_profile` | Basic user info |
+| `investment_profile` | Risk assessment |
+| `security_profile` | Security settings |
+| `user_profile` | Comprehensive profile |
+| `complete_profile` | All profile types combined |
+| `account_settings` | Account preferences |
+
+### Utility (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_tools` | List all available tools |
+| `session_status` | Authentication and session info |
+| `rate_limit_status` | API rate limit usage |
+
+## Setup
 
 ```bash
-pip install open-stocks-mcp
+uv sync
+cp .env.example .env
+# Edit .env with your Robinhood credentials
 ```
 
-For development:
-```bash
-git clone https://github.com/Open-Agent-Tools/open-stocks-mcp.git
-cd open-stocks-mcp
-uv pip install -e .
+## Configuration
+
+```env
+ROBINHOOD_USERNAME=you@example.com
+ROBINHOOD_PASSWORD=your-password
+# Optional: TOTP seed for 2FA
+# ROBINHOOD_MFA_SECRET=AAAA BBBB CCCC DDDD
+# Optional: one-time MFA code (e.g. from 1Password CLI)
+# ROBINHOOD_MFA_CODE=123456
 ```
 
-## Quick Start
-
-### 1. Set Up Credentials
-
-Create a `.env` file:
-
-**For Robinhood:**
-```bash
-ROBINHOOD_USERNAME=your_email@example.com
-ROBINHOOD_PASSWORD=your_password
-```
-
-**For Schwab (optional):**
-```bash
-SCHWAB_API_KEY=your_api_key
-SCHWAB_APP_SECRET=your_app_secret
-SCHWAB_CALLBACK_URL=https://127.0.0.1:8182/
-SCHWAB_TOKEN_PATH=~/.tokens/schwab_token.json
-
-# Enable both brokers
-ENABLED_BROKERS=robinhood,schwab
-```
-
-**Note:** Schwab requires a developer account and API approval (several days). See `docs/SCHWAB_INTEGRATION_PLAN.md` for details.
-
-### 2. Start the Server
-
-**HTTP Transport (Recommended)**
-```bash
-open-stocks-mcp-server --transport http --port 3001
-```
-
-**STDIO Transport**
-```bash
-open-stocks-mcp-server --transport stdio
-```
-
-### 3. Test the Server
+## Usage
 
 ```bash
-# Health check (HTTP transport)
-curl http://localhost:3001/health
+# Run as MCP server (stdio)
+just run
 
-# Interactive testing
-uv run mcp dev src/open_stocks_mcp/server/app.py
+# Dev mode (inspector)
+just dev
 ```
-
-## Docker Deployment
-
-**Production Docker Setup:**
-```bash
-cd examples/open-stocks-mcp-docker
-docker-compose up -d
-```
-
-**Features:**
-- Persistent session storage
-- Automatic log rotation
-- Health monitoring
-- Security headers and CORS
-
-## MCP Client Integration
 
 ### Claude Desktop
-Add to your MCP settings (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+Add to your Claude Desktop MCP config:
 
 ```json
 {
   "mcpServers": {
-    "open-stocks": {
-      "command": "open-stocks-mcp-server",
-      "args": ["--transport", "stdio"]
+    "robinhood": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/mcp-robinhood", "run", "mcp-robinhood"],
+      "env": {
+        "ROBINHOOD_USERNAME": "you@example.com",
+        "ROBINHOOD_PASSWORD": "your-password"
+      }
     }
   }
 }
 ```
 
-### HTTP Transport Integration
-```json
-{
-  "mcpServers": {
-    "open-stocks": {
-      "command": "python",
-      "args": ["-m", "mcp_http_client", "http://localhost:3001/mcp"]
-    }
-  }
-}
+## Project Structure
+
+```text
+mcp-robinhood/
+├── src/mcp_robinhood/
+│   ├── server/
+│   │   └── app.py              # MCP server and tool registration
+│   ├── tools/
+│   │   ├── robinhood_account_tools.py
+│   │   ├── robinhood_advanced_portfolio_tools.py
+│   │   ├── robinhood_crypto_tools.py
+│   │   ├── robinhood_dividend_tools.py
+│   │   ├── robinhood_market_data_tools.py
+│   │   ├── robinhood_options_tools.py
+│   │   ├── robinhood_stock_tools.py
+│   │   ├── robinhood_user_profile_tools.py
+│   │   ├── robinhood_tools.py
+│   │   ├── session_manager.py   # Auth session with auto-refresh
+│   │   ├── error_handling.py    # Typed errors and response helpers
+│   │   └── rate_limiter.py      # API rate limiting
+│   ├── config.py
+│   └── logging_config.py
+├── tests/
+├── pyproject.toml
+├── justfile
+└── LICENSE                      # Apache 2.0
 ```
 
-## Available Tools
+## Acknowledgments
 
-### 🏦 Multi-Broker Support
-
-**Robinhood Tools (80 tools)**:
-- All existing Robinhood functionality maintained
-- No breaking changes to existing API
-
-**Schwab Tools (24 tools)**:
-- Account & Portfolio (5 tools) - account numbers, balances, positions
-- Market Data (5 tools) - quotes, price history, instrument search
-- Trading (8 tools) - market/limit buy/sell, order management
-- Options (6 tools) - chains, expirations, positions, buy/sell
-
-All Schwab tools use `schwab_` prefix (e.g., `schwab_get_portfolio`, `schwab_buy_stock_market`).
-
----
-
-### Robinhood Tools by Category
-
-### Account & Portfolio (15 tools)
-- Account information and details
-- Portfolio positions and holdings
-- Day trading metrics and history
-- Stock and options order history
-
-### Market Data (12 tools)
-- Real-time stock quotes and fundamentals
-- Market movers and top performers
-- Sector analysis and market trends
-- Historical price data
-
-### Options Trading (15 tools)
-- Options chains and market data
-- Position aggregation and analysis
-- Historical options data
-- Options instrument search
-
-### Watchlists & Profiles (8 tools) ✅ Watchlist Management Tested
-- **Watchlist management** - All 5 tools working (add/remove symbols tested with AMC)
-- User profile and settings
-- Investment preferences
-- Account features
-
-### Market Research (10 tools)
-- Earnings data and analysis
-- Stock ratings and news
-- Dividend information
-- Corporate actions and splits
-
-### Analytics & Monitoring (5 tools)
-- Portfolio analytics
-- Performance metrics
-- Server health monitoring
-- Interest and loan payments
-
-### Notifications (12 tools)
-- Account notifications
-- Margin calls and interest
-- Subscription management
-- Referral tracking
-
-### Advanced Instruments (4 tools)
-- Multi-symbol instrument lookup
-- Enhanced search capabilities
-- Level II market data (Gold required)
-- Direct instrument access
-
-### Trading Capabilities (15 tools)
-**Stock Orders (✅ Live Tested):**
-- ✅ Market orders - Buy/sell tested with XOM and AMC
-- ✅ Limit orders - Buy/sell tested with XOM ($106) and AMC ($3)
-- ✅ Stop-loss orders - Sell tested with AMC (25 shares at $2.50)
-- Individual and bulk order cancellation
-- ❌ **Deprecated**: Trailing stop orders, fractional shares (uncommon use cases)
-
-**Options Orders (✅ Live Tested):**
-- ✅ Options limit orders (buy/sell) - **API bugs fixed**
-- ✅ Options discovery and contract search
-- ✅ Credit and debit spread strategies - **API bugs fixed, ready for testing**
-- Live validation: F $9 put sell order placed successfully
-
-**Order Management:**
-- Cancel individual or all orders (stock and options)
-- View open positions
-- Order status tracking
-
-## Authentication
-
-The server handles Robinhood's authentication requirements:
-- **Device Verification**: Automatic handling of new device approval
-- **Multi-Factor Authentication**: Support for SMS and app-based MFA
-- **Session Persistence**: Cached authentication to reduce re-verification
-
-## Development
-
-### Testing
-```bash
-pytest                           # All tests
-pytest -m "journey_account"      # Fast account tests (~1.8s)
-pytest -m "journey_market_data"  # Market data tests (~3.8s) 
-pytest -m "not slow and not exception_test"  # Recommended for development
-
-# See CLAUDE.md for complete journey testing guide
-```
-
-### Code Quality
-```bash
-ruff check . --fix              # Lint and fix
-ruff format .                   # Format code
-mypy .                          # Type check
-```
-
-### Google ADK Evaluation
-```bash
-# Set environment variables
-export GOOGLE_API_KEY="your-google-api-key"
-export ROBINHOOD_USERNAME="email@example.com"
-export ROBINHOOD_PASSWORD="password"
-
-# Start Docker server
-cd examples/open-stocks-mcp-docker && docker-compose up -d
-
-# Run evaluation
-MCP_HTTP_URL="http://localhost:3001/mcp" adk eval examples/google_adk_agent tests/evals/list_available_tools_test.json --config_file_path tests/evals/test_config.json
-```
-
-## Project Scope
-
-**Completed in v0.7.0-dev:**
-- ✅ **Multi-broker architecture** - Abstract broker layer supporting multiple brokers
-- ✅ **Schwab integration** - 24 tools across account, market data, trading, and options
-- ✅ **OAuth authentication** - Schwab OAuth 2.0 flow with automatic token refresh
-- ✅ **Graceful degradation** - Server starts even if broker authentication fails
-- ✅ **Backward compatibility** - All Robinhood tools unchanged, no breaking changes
-
-**Completed in v0.6.4:**
-- ✅ **Enhanced Options Tools** - New `open_option_positions_with_details()` enriches positions with call/put type
-- ✅ **Stock trading API fixes** - Market, limit, and stop-loss buy/sell functions now working correctly
-- ✅ **Live stock trading validation** - XOM and AMC orders successfully placed (market, limit, stop-loss)
-- ✅ **Tool deprecation** - Removed 4 uncommon trading functions (buy_stock_stop_loss, trailing stops, fractional shares)
-- ✅ **Options trading API fixes** - `buy_option_limit`, `sell_option_limit`, and spread strategies now working
-- ✅ **Live options validation** - F $9 put successfully traded
-- ✅ **Options discovery** - `find_options` function working correctly
-- ✅ **Options spreads fixed** - Credit and debit spread functions corrected (API signature, data structure, symbol extraction)
-- ✅ **Watchlist management complete** - All 5 watchlist tools working with live testing
-- ✅ **Watchlist API fixes** - Fixed response format changes and parameter binding issues
-- ✅ **All trading functions ready** - Phase 7 complete, ready for Phase 8
-
-**Next Priority (Schwab Testing):**
-- ⏳ Schwab journey tests (blocked by API credentials)
-- ⏳ Live Schwab trading validation
-- ⏳ Multi-broker integration tests
-- ⏳ Schwab-specific documentation
-
-**Out of Scope:**
-- Crypto trading tools
-- Banking/ACH transfers
-- Account modifications
-- Deposit/withdrawal functionality
-
-## Contributing
-
-See [CONTRIBUTING.md](contributing/README.md) for development guidelines.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Security
-
-**Important Security Notes:**
-- **Live trading capabilities** - Real orders are placed with actual money
-- Never commit credentials to version control
-- Use proper file permissions for `.env` files
-- **Trading validation complete** - Both stock and options trading tested
-- Always verify trades before execution in production
-- **Options trading note**: Selling options (like puts) can result in assignment and stock ownership
-
-For security concerns, please see our [security policy](SECURITY.md).
-
----
-
-**Disclaimer:** This software is for educational and development purposes. Trading stocks and options involves substantial risk. Always verify trades and understand the risks before executing any financial transactions.
+Based on [open-stocks-mcp](https://github.com/Open-Agent-Tools/open-stocks-mcp)
+by [Open Agent Tools](https://github.com/Open-Agent-Tools), licensed under
+Apache 2.0. Original trading, Schwab, and notification tools removed; retained
+read-only Robinhood tools with modified configuration and project structure.
