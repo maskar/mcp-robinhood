@@ -9,7 +9,7 @@ USER app
 WORKDIR /home/app/mcp-robinhood
 
 # Install dependencies first (cache layer)
-COPY --chown=app:app pyproject.toml uv.lock ./
+COPY --chown=app:app pyproject.toml uv.lock LICENSE README.md ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source

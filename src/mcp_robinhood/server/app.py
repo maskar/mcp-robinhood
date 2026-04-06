@@ -627,7 +627,7 @@ def main() -> int:
     try:
         if transport == "http":
             logger.info(f"Starting MCP server (HTTP) on {host}:{port}")
-            asyncio.run(server.run_streamable_http_async(host=host, port=port))
+            asyncio.run(server.run_http_async(host=host, port=port))
         else:
             logger.info("Starting MCP server (stdio)")
             asyncio.run(server.run_stdio_async())
