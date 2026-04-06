@@ -8,7 +8,6 @@ license = { file = "LICENSE" }
 keywords = ["mcp", "robinhood", "portfolio", "finance"]
 
 dependencies = [
-    "mcp>=1.25.0",
     "robin-stocks>=3.4.0",
     "pydantic>=2.12.0",
     "python-dotenv>=1.2.0",
@@ -18,6 +17,7 @@ dependencies = [
     "loguru>=0.7",
     "hvac>=2.4.0",
     "pyotp>=2.9.0",
+    "fastmcp>=2.0",
 ]
 
 [project.optional-dependencies]

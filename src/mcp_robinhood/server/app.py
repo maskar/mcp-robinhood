@@ -6,10 +6,12 @@ import sys
 from typing import Any
 
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
+from fastmcp.server.auth.providers.google import GoogleProvider
+from loguru import logger
 
 from mcp_robinhood.config import ServerConfig, load_config
-from mcp_robinhood.logging_config import logger, setup_logging
+from mcp_robinhood.logging_config import setup_logging
 from mcp_robinhood.tools.rate_limiter import get_rate_limiter
 from mcp_robinhood.tools.robinhood_account_tools import (
     get_account_details,
@@ -81,7 +83,53 @@ from mcp_robinhood.tools.session_manager import get_session_manager
 
 load_dotenv()
 
-mcp = FastMCP("Robinhood", instructions="Read-only access to Robinhood portfolio data.")
+# Fetch Vault secrets early so OAuth and auth can use them
+from mcp_robinhood.vault import fetch_secrets, get_secret
+
+fetch_secrets()
+
+
+def _env(key: str) -> str:
+    """Get value from Vault, falling back to env var."""
+    return get_secret(key) or os.getenv(key, "")
+
+
+# --- OAuth ---
+
+
+class _RobinhoodGoogleProvider(GoogleProvider):
+    """GoogleProvider with email allowlist."""
+
+    async def verify_token(self, token):
+        result = await super().verify_token(token)
+        if result is None:
+            return None
+        email = (result.claims or {}).get("email", "")
+        allowed = _env("GOOGLE_ALLOWED_EMAIL")
+        if allowed and email != allowed:
+            logger.warning("Rejected OAuth attempt from: {}", email)
+            return None
+        return result
+
+
+auth = None
+_client_id = _env("GOOGLE_CLIENT_ID")
+_public_hostname = _env("PUBLIC_HOSTNAME")
+if _client_id and _public_hostname:
+    auth = _RobinhoodGoogleProvider(
+        client_id=_client_id,
+        client_secret=_env("GOOGLE_CLIENT_SECRET"),
+        base_url=f"https://{_public_hostname}",
+        required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
+        require_authorization_consent=False,
+    )
+    logger.info("Google OAuth enabled")
+
+mcp = FastMCP(
+    "Robinhood",
+    instructions="Read-only access to Robinhood portfolio data.",
+    auth=auth,
+)
 
 
 # --- Utility ---
@@ -546,14 +594,10 @@ def create_mcp_server(config: ServerConfig | None = None) -> FastMCP:
 
 
 def _authenticate() -> None:
-    from mcp_robinhood.vault import fetch_secrets, get_secret
-
-    fetch_secrets()
-
-    username = get_secret("ROBINHOOD_USERNAME") or os.getenv("ROBINHOOD_USERNAME")
-    password = get_secret("ROBINHOOD_PASSWORD") or os.getenv("ROBINHOOD_PASSWORD")
-    mfa_code = get_secret("ROBINHOOD_MFA_CODE") or os.getenv("ROBINHOOD_MFA_CODE")
-    mfa_secret = get_secret("ROBINHOOD_MFA_SECRET") or os.getenv("ROBINHOOD_MFA_SECRET")
+    username = _env("ROBINHOOD_USERNAME")
+    password = _env("ROBINHOOD_PASSWORD")
+    mfa_code = _env("ROBINHOOD_MFA_CODE")
+    mfa_secret = _env("ROBINHOOD_MFA_SECRET")
 
     if username and password:
         session_manager = get_session_manager()
