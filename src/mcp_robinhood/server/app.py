@@ -545,13 +545,15 @@ def create_mcp_server(config: ServerConfig | None = None) -> FastMCP:
     return mcp
 
 
-def main() -> int:
-    username = os.getenv("ROBINHOOD_USERNAME")
-    password = os.getenv("ROBINHOOD_PASSWORD")
-    mfa_code = os.getenv("ROBINHOOD_MFA_CODE")
-    mfa_secret = os.getenv("ROBINHOOD_MFA_SECRET")
+def _authenticate() -> None:
+    from mcp_robinhood.vault import fetch_secrets, get_secret
 
-    server = create_mcp_server()
+    fetch_secrets()
+
+    username = get_secret("ROBINHOOD_USERNAME") or os.getenv("ROBINHOOD_USERNAME")
+    password = get_secret("ROBINHOOD_PASSWORD") or os.getenv("ROBINHOOD_PASSWORD")
+    mfa_code = get_secret("ROBINHOOD_MFA_CODE") or os.getenv("ROBINHOOD_MFA_CODE")
+    mfa_secret = get_secret("ROBINHOOD_MFA_SECRET") or os.getenv("ROBINHOOD_MFA_SECRET")
 
     if username and password:
         session_manager = get_session_manager()
@@ -569,9 +571,22 @@ def main() -> int:
     else:
         logger.warning("No Robinhood credentials — set ROBINHOOD_USERNAME and ROBINHOOD_PASSWORD")
 
+
+def main() -> int:
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    host = os.getenv("MCP_HOST", "0.0.0.0")
+    port = int(os.getenv("MCP_PORT", "8080"))
+
+    server = create_mcp_server()
+    _authenticate()
+
     try:
-        logger.info("Starting MCP server (stdio)")
-        asyncio.run(server.run_stdio_async())
+        if transport == "http":
+            logger.info(f"Starting MCP server (HTTP) on {host}:{port}")
+            asyncio.run(server.run_streamable_http_async(host=host, port=port))
+        else:
+            logger.info("Starting MCP server (stdio)")
+            asyncio.run(server.run_stdio_async())
         return 0
     except KeyboardInterrupt:
         logger.info("Server stopped")

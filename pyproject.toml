@@ -16,6 +16,8 @@ dependencies = [
     "cachetools>=6.2.0",
     "requests>=2.32.0",
     "loguru>=0.7",
+    "hvac>=2.4.0",
+    "pyotp>=2.9.0",
 ]
 
 [project.optional-dependencies]
