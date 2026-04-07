@@ -1,4 +1,4 @@
-"""Vault client — fetch Robinhood credentials at startup, cache in memory."""
+"""Vault client — AppRole auth, fetch secrets at startup, cache in memory."""
 
 import os
 
@@ -8,20 +8,38 @@ from loguru import logger
 _secrets: dict[str, str] = {}
 
 
+def _authenticate(client: hvac.Client) -> bool:
+    """Authenticate via AppRole or static token."""
+    role_id = os.getenv("VAULT_ROLE_ID")
+    secret_id = os.getenv("VAULT_SECRET_ID")
+
+    if role_id and secret_id:
+        resp = client.auth.approle.login(role_id=role_id, secret_id=secret_id)
+        client.token = resp["auth"]["client_token"]
+        logger.info("Vault: authenticated via AppRole")
+        return True
+
+    if os.getenv("VAULT_TOKEN"):
+        client.token = os.getenv("VAULT_TOKEN")
+        if client.is_authenticated():
+            logger.info("Vault: authenticated via static token")
+            return True
+
+    return False
+
+
 def fetch_secrets() -> dict[str, str]:
     """Fetch secrets from Vault KV v2 and cache in memory."""
     global _secrets
 
     vault_addr = os.getenv("VAULT_ADDR")
-    vault_token = os.getenv("VAULT_TOKEN")
-
-    if not vault_addr or not vault_token:
+    if not vault_addr:
         logger.debug("Vault not configured — skipping secret fetch")
         return _secrets
 
     try:
-        client = hvac.Client(url=vault_addr, token=vault_token)
-        if not client.is_authenticated():
+        client = hvac.Client(url=vault_addr)
+        if not _authenticate(client):
             logger.error("Vault authentication failed")
             return _secrets
 
