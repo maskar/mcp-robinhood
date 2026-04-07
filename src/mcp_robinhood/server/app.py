@@ -121,9 +121,37 @@ if _client_id and _public_hostname:
         client_secret=_env("GOOGLE_CLIENT_SECRET"),
         base_url=f"https://{_public_hostname}",
         required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
-        require_authorization_consent=False,
+        require_authorization_consent="external",
     )
     logger.info("Google OAuth enabled")
+
+
+async def _pre_register_client() -> None:
+    """Pre-register the Google OAuth client so Claude.ai can use client_id/secret directly."""
+    if auth is None:
+        return
+    from mcp.shared.auth import OAuthClientInformationFull
+
+    client_id = _env("GOOGLE_CLIENT_ID")
+    if not client_id:
+        return
+
+    try:
+        await auth.register_client(
+            OAuthClientInformationFull(
+                client_id=client_id,
+                client_secret=_env("GOOGLE_CLIENT_SECRET"),
+                redirect_uris=["https://claude.ai/api/mcp/auth_callback"],
+                grant_types=["authorization_code", "refresh_token"],
+                scope="openid https://www.googleapis.com/auth/userinfo.email",
+                token_endpoint_auth_method="client_secret_post",
+                client_name="Claude",
+            )
+        )
+        logger.info("Pre-registered OAuth client: {}", client_id[:20] + "...")
+    except Exception as e:
+        logger.warning("Failed to pre-register OAuth client: {}", e)
+
 
 mcp = FastMCP(
     "Robinhood",
@@ -623,6 +651,7 @@ def main() -> int:
 
     server = create_mcp_server()
     _authenticate()
+    asyncio.run(_pre_register_client())
 
     try:
         if transport == "http":
