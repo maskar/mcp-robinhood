@@ -1,20 +1,34 @@
-"""Server configuration for Open Stocks MCP MCP server"""
+"""Configuration via Pydantic settings."""
 
-import os
-from dataclasses import dataclass
-
-
-@dataclass
-class ServerConfig:
-    """Configuration for the MCP server"""
-
-    name: str = "Open Stocks MCP"
-    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+from pydantic_settings import BaseSettings
 
 
-def load_config() -> ServerConfig:
-    """Load server configuration from environment or defaults"""
-    return ServerConfig(
-        name=os.getenv("MCP_SERVER_NAME", "Open Stocks MCP"),
-        log_level=os.getenv("LOG_LEVEL", "INFO"),
-    )
+class Settings(BaseSettings):
+    model_config = {"env_prefix": "", "env_file": ".env", "extra": "ignore"}
+
+    # Server
+    mcp_transport: str = "stdio"
+    mcp_host: str = "0.0.0.0"
+    mcp_port: int = 8080
+
+    # Vault
+    vault_addr: str = ""
+    vault_token: str = ""
+
+    # Google OAuth
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_allowed_email: str = ""
+    public_hostname: str = ""
+
+    # Robinhood (fallback when Vault unavailable)
+    robinhood_username: str = ""
+    robinhood_password: str = ""
+    robinhood_mfa_code: str = ""
+    robinhood_mfa_secret: str = ""
+
+    # Logging
+    log_level: str = "INFO"
+
+
+settings = Settings()

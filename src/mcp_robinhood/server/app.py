@@ -1,17 +1,14 @@
 """MCP server for read-only Robinhood portfolio data."""
 
 import asyncio
-import os
 import sys
 from typing import Any
 
-from dotenv import load_dotenv
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
 from loguru import logger
 
-from mcp_robinhood.config import ServerConfig, load_config
-from mcp_robinhood.logging_config import setup_logging
+from mcp_robinhood.config import settings
 from mcp_robinhood.tools.rate_limiter import get_rate_limiter
 from mcp_robinhood.tools.robinhood_account_tools import (
     get_account_details,
@@ -81,17 +78,15 @@ from mcp_robinhood.tools.robinhood_user_profile_tools import (
 )
 from mcp_robinhood.tools.session_manager import get_session_manager
 
-load_dotenv()
-
-# Fetch Vault secrets early so OAuth and auth can use them
+# Fetch Vault secrets early so they override settings
 from mcp_robinhood.vault import fetch_secrets, get_secret
 
 fetch_secrets()
 
 
-def _env(key: str) -> str:
-    """Get value from Vault, falling back to env var."""
-    return get_secret(key) or os.getenv(key, "")
+def _cfg(key: str) -> str:
+    """Get value from Vault, falling back to settings."""
+    return get_secret(key) or getattr(settings, key.lower(), "")
 
 
 # --- OAuth ---
@@ -105,7 +100,7 @@ class _RobinhoodGoogleProvider(GoogleProvider):
         if result is None:
             return None
         email = (result.claims or {}).get("email", "")
-        allowed = _env("GOOGLE_ALLOWED_EMAIL")
+        allowed = _cfg("GOOGLE_ALLOWED_EMAIL")
         if allowed and email != allowed:
             logger.warning("Rejected OAuth attempt from: {}", email)
             return None
@@ -113,12 +108,12 @@ class _RobinhoodGoogleProvider(GoogleProvider):
 
 
 auth = None
-_client_id = _env("GOOGLE_CLIENT_ID")
-_public_hostname = _env("PUBLIC_HOSTNAME")
+_client_id = _cfg("GOOGLE_CLIENT_ID")
+_public_hostname = _cfg("PUBLIC_HOSTNAME")
 if _client_id and _public_hostname:
     auth = _RobinhoodGoogleProvider(
         client_id=_client_id,
-        client_secret=_env("GOOGLE_CLIENT_SECRET"),
+        client_secret=_cfg("GOOGLE_CLIENT_SECRET"),
         base_url=f"https://{_public_hostname}",
         required_scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
         require_authorization_consent="external",
@@ -128,19 +123,15 @@ if _client_id and _public_hostname:
 
 async def _pre_register_client() -> None:
     """Pre-register the Google OAuth client so Claude.ai can use client_id/secret directly."""
-    if auth is None:
+    if auth is None or not _client_id:
         return
     from mcp.shared.auth import OAuthClientInformationFull
-
-    client_id = _env("GOOGLE_CLIENT_ID")
-    if not client_id:
-        return
 
     try:
         await auth.register_client(
             OAuthClientInformationFull(
-                client_id=client_id,
-                client_secret=_env("GOOGLE_CLIENT_SECRET"),
+                client_id=_client_id,
+                client_secret=_cfg("GOOGLE_CLIENT_SECRET"),
                 redirect_uris=["https://claude.ai/api/mcp/auth_callback"],
                 grant_types=["authorization_code", "refresh_token"],
                 scope="openid https://www.googleapis.com/auth/userinfo.email",
@@ -148,7 +139,7 @@ async def _pre_register_client() -> None:
                 client_name="Claude",
             )
         )
-        logger.info("Pre-registered OAuth client: {}", client_id[:20] + "...")
+        logger.info("Pre-registered OAuth client: {}", _client_id[:20] + "...")
     except Exception as e:
         logger.warning("Failed to pre-register OAuth client: {}", e)
 
@@ -614,18 +605,11 @@ async def account_settings() -> dict[str, Any]:
 # --- Server ---
 
 
-def create_mcp_server(config: ServerConfig | None = None) -> FastMCP:
-    if config is None:
-        config = load_config()
-    setup_logging(config)
-    return mcp
-
-
 def _authenticate() -> None:
-    username = _env("ROBINHOOD_USERNAME")
-    password = _env("ROBINHOOD_PASSWORD")
-    mfa_code = _env("ROBINHOOD_MFA_CODE")
-    mfa_secret = _env("ROBINHOOD_MFA_SECRET")
+    username = _cfg("ROBINHOOD_USERNAME")
+    password = _cfg("ROBINHOOD_PASSWORD")
+    mfa_code = _cfg("ROBINHOOD_MFA_CODE")
+    mfa_secret = _cfg("ROBINHOOD_MFA_SECRET")
 
     if username and password:
         session_manager = get_session_manager()
@@ -644,30 +628,17 @@ def _authenticate() -> None:
         logger.warning("No Robinhood credentials — set ROBINHOOD_USERNAME and ROBINHOOD_PASSWORD")
 
 
-def main() -> int:
-    transport = os.getenv("MCP_TRANSPORT", "stdio")
-    host = os.getenv("MCP_HOST", "0.0.0.0")
-    port = int(os.getenv("MCP_PORT", "8080"))
-
-    server = create_mcp_server()
+def main():
+    """Entry point for mcp-robinhood command."""
     _authenticate()
     asyncio.run(_pre_register_client())
-
-    try:
-        if transport == "http":
-            logger.info(f"Starting MCP server (HTTP) on {host}:{port}")
-            asyncio.run(server.run_http_async(host=host, port=port))
-        else:
-            logger.info("Starting MCP server (stdio)")
-            asyncio.run(server.run_stdio_async())
-        return 0
-    except KeyboardInterrupt:
-        logger.info("Server stopped")
-        return 0
-    except Exception as e:
-        logger.error(f"Server failed: {e}", exc_info=True)
-        return 1
+    transport = "streamable-http" if settings.mcp_transport == "http" else settings.mcp_transport
+    mcp.run(
+        transport=transport,
+        host=settings.mcp_host,
+        port=settings.mcp_port,
+    )
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
