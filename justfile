@@ -48,22 +48,11 @@ build:
 
 # Start container on VPS
 up:
-    ssh {{DEFAULT_SERVER}} "podman run -d \
-        --name mcp-robinhood \
-        --restart unless-stopped \
-        -p 127.0.0.1:8081:8080 \
-        --env-file {{DEPLOY_PATH}}/.env \
-        -e MCP_TRANSPORT=http \
-        -e MCP_HOST=0.0.0.0 \
-        -e MCP_PORT=8080 \
-        -v mcp-robinhood-tokens:/home/app/.tokens \
-        --memory 512m \
-        --cpus 0.5 \
-        mcp-robinhood:latest"
+    ssh {{DEFAULT_SERVER}} "cd {{DEPLOY_PATH}} && podman-compose up -d"
 
-# Stop and remove container on VPS
+# Stop container on VPS
 down:
-    ssh {{DEFAULT_SERVER}} "podman stop mcp-robinhood && podman rm mcp-robinhood"
+    ssh {{DEFAULT_SERVER}} "cd {{DEPLOY_PATH}} && podman-compose down"
 
 # Restart container on VPS
 restart:
