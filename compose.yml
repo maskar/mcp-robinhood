@@ -13,6 +13,9 @@ services:
       # VAULT_ADDR set in .env
     env_file:
       - .env
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       - robinhood-tokens:/home/app/.tokens
     deploy:
