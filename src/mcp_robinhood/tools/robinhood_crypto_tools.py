@@ -8,21 +8,16 @@ from mcp_robinhood.logging_config import logger
 from mcp_robinhood.tools.error_handling import (
     create_error_response,
     create_success_response,
+    execute_with_retry,
     handle_robin_stocks_errors,
     sanitize_api_response,
 )
-from mcp_robinhood.tools.rate_limiter import rate_limited_call
-from mcp_robinhood.tools.session_manager import get_session_manager
 
 
 @handle_robin_stocks_errors
 async def get_crypto_positions() -> dict[str, Any]:
     """Get current cryptocurrency positions with quantities and market values."""
-    session_manager = get_session_manager()
-    if not session_manager.is_session_valid():
-        return create_error_response("Not authenticated. Please login first.")
-
-    positions = await rate_limited_call(rh.crypto.get_crypto_positions)
+    positions = await execute_with_retry(rh.crypto.get_crypto_positions)
     if not positions:
         return create_success_response({"positions": [], "count": 0})
 
@@ -44,7 +39,7 @@ async def get_crypto_positions() -> dict[str, Any]:
         # Fetch current quote
         price = 0.0
         try:
-            quote = await rate_limited_call(rh.crypto.get_crypto_quote, symbol)
+            quote = await execute_with_retry(rh.crypto.get_crypto_quote, symbol)
             if quote:
                 price = _to_float(quote.get("mark_price"))
         except Exception as exc:
@@ -64,7 +59,6 @@ async def get_crypto_positions() -> dict[str, Any]:
             "unrealized_pnl": pnl,
         })
 
-    session_manager.update_last_successful_call()
     return create_success_response(
         sanitize_api_response({"positions": rows, "count": len(rows)})
     )
@@ -77,15 +71,10 @@ async def get_crypto_quote(symbol: str) -> dict[str, Any]:
     Args:
         symbol: Crypto symbol (e.g., "BTC", "ETH", "DOGE")
     """
-    session_manager = get_session_manager()
-    if not session_manager.is_session_valid():
-        return create_error_response("Not authenticated. Please login first.")
-
-    quote = await rate_limited_call(rh.crypto.get_crypto_quote, symbol.upper())
+    quote = await execute_with_retry(rh.crypto.get_crypto_quote, symbol.upper())
     if not quote:
-        return create_error_response(f"No quote data for {symbol}")
+        return create_error_response(ValueError(f"No quote data for {symbol}"))
 
-    session_manager.update_last_successful_call()
     return create_success_response(sanitize_api_response({
         "symbol": symbol.upper(),
         "mark_price": _to_float(quote.get("mark_price")),
@@ -104,15 +93,10 @@ async def get_crypto_info(symbol: str) -> dict[str, Any]:
     Args:
         symbol: Crypto symbol (e.g., "BTC", "ETH")
     """
-    session_manager = get_session_manager()
-    if not session_manager.is_session_valid():
-        return create_error_response("Not authenticated. Please login first.")
-
-    info = await rate_limited_call(rh.crypto.get_crypto_info, symbol.upper())
+    info = await execute_with_retry(rh.crypto.get_crypto_info, symbol.upper())
     if not info:
-        return create_error_response(f"No info for {symbol}")
+        return create_error_response(ValueError(f"No info for {symbol}"))
 
-    session_manager.update_last_successful_call()
     return create_success_response(sanitize_api_response(info))
 
 
