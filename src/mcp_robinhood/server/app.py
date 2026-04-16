@@ -67,6 +67,7 @@ from mcp_robinhood.tools.robinhood_stock_tools import (
     get_stock_quote_by_id,
     search_stocks,
 )
+from mcp_robinhood.tools.robinhood_order_tools import cancel_order, place_buy_limit, place_sell_limit
 from mcp_robinhood.tools.robinhood_tax_lot_tools import get_closed_lots, get_stock_transactions, get_tax_lots
 from mcp_robinhood.tools.robinhood_tools import list_available_tools
 from mcp_robinhood.tools.robinhood_user_profile_tools import (
@@ -642,6 +643,46 @@ async def closed_lots(symbol: str) -> dict[str, Any]:
         symbol: Stock ticker symbol (e.g., "CAVA")
     """
     return await get_closed_lots(symbol)
+
+
+# --- Orders ---
+
+
+@mcp.tool()
+async def buy_limit(symbol: str, quantity: float, limit_price: float, confirm: bool) -> dict[str, Any]:
+    """Places a limit buy order. confirm must be True to execute.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "AAPL")
+        quantity: Number of shares to buy
+        limit_price: Maximum price per share to pay
+        confirm: Must be True to place the order
+    """
+    return await place_buy_limit(symbol, quantity, limit_price, confirm)
+
+
+@mcp.tool()
+async def sell_limit(symbol: str, quantity: float, limit_price: float, confirm: bool) -> dict[str, Any]:
+    """Places a limit sell order. confirm must be True to execute.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "AAPL")
+        quantity: Number of shares to sell
+        limit_price: Minimum price per share to accept
+        confirm: Must be True to place the order
+    """
+    return await place_sell_limit(symbol, quantity, limit_price, confirm)
+
+
+@mcp.tool()
+async def cancel_stock_order(order_id: str, confirm: bool) -> dict[str, Any]:
+    """Cancels an open stock order. confirm must be True to execute.
+
+    Args:
+        order_id: Robinhood order ID to cancel
+        confirm: Must be True to cancel the order
+    """
+    return await cancel_order(order_id, confirm)
 
 
 # --- Server ---
