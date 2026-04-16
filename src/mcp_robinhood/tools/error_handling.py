@@ -82,6 +82,7 @@ def classify_error(error: Exception) -> RobinStocksError:
         for keyword in [
             "unauthorized",
             "login",
+            "logged in",
             "authentication",
             "token",
             "session",

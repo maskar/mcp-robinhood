@@ -66,6 +66,7 @@ from mcp_robinhood.tools.robinhood_stock_tools import (
     get_stock_quote_by_id,
     search_stocks,
 )
+from mcp_robinhood.tools.robinhood_tax_lot_tools import get_tax_lots
 from mcp_robinhood.tools.robinhood_tools import list_available_tools
 from mcp_robinhood.tools.robinhood_user_profile_tools import (
     get_account_profile,
@@ -600,6 +601,16 @@ async def complete_profile() -> dict[str, Any]:
 async def account_settings() -> dict[str, Any]:
     """Gets account settings and preferences."""
     return await get_account_settings()
+
+
+@mcp.tool()
+async def tax_lots(symbol: str) -> dict[str, Any]:
+    """Gets tax lots for a stock position via FIFO reconstruction from order history.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "CAVA")
+    """
+    return await get_tax_lots(symbol)
 
 
 # --- Server ---
