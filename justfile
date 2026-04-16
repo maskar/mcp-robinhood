@@ -66,9 +66,10 @@ up:
 down:
     ssh {{DEFAULT_SERVER}} "podman stop mcp-robinhood && podman rm mcp-robinhood"
 
-# Restart container on VPS
+# Restart container on VPS (recreate from new image)
 restart:
-    ssh {{DEFAULT_SERVER}} "podman restart mcp-robinhood"
+    ssh {{DEFAULT_SERVER}} "podman stop mcp-robinhood && podman rm mcp-robinhood"
+    just up
 
 # View logs on VPS
 logs:
