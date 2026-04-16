@@ -6,13 +6,16 @@ import robin_stocks.robinhood as rh
 
 from mcp_robinhood.logging_config import logger
 from mcp_robinhood.tools.error_handling import (
+    create_error_response,
     create_no_data_response,
     create_success_response,
     execute_with_retry,
     handle_robin_stocks_errors,
     log_api_call,
     sanitize_api_response,
+    validate_symbol,
 )
+from mcp_robinhood.tools.session_manager import ensure_authenticated_session
 
 
 @handle_robin_stocks_errors
@@ -232,3 +235,67 @@ async def get_positions() -> dict[str, Any]:
     return create_success_response(
         {"positions": position_list, "count": len(position_list)}
     )
+
+
+@handle_robin_stocks_errors
+async def get_position_for_symbol(symbol: str) -> dict[str, Any]:
+    """Gets the current position for a single stock symbol including quantity, cost basis, current value, and P&L.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "AAPL")
+    """
+    if not validate_symbol(symbol):
+        return create_error_response(ValueError(f"Invalid symbol: {symbol}"), "symbol validation")
+
+    symbol = symbol.strip().upper()
+    authenticated, err = await ensure_authenticated_session()
+    if not authenticated:
+        return create_error_response(Exception(err or "Not authenticated"), "auth")
+
+    log_api_call("get_position_for_symbol", symbol=symbol)
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    positions = await execute_with_retry(rh.get_open_stock_positions)
+    if not positions:
+        return create_no_data_response(f"No open positions found", {"symbol": symbol})
+
+    # Find matching position by resolving symbol for each
+    matched = None
+    for pos in positions:
+        instrument_url = pos.get("instrument", "")
+        try:
+            pos_symbol = await loop.run_in_executor(None, rh.get_symbol_by_url, instrument_url)
+            if pos_symbol and pos_symbol.upper() == symbol:
+                matched = pos
+                break
+        except Exception:
+            continue
+
+    if not matched:
+        return create_no_data_response(f"No open position found for {symbol}", {"symbol": symbol})
+
+    quantity = float(matched.get("quantity", 0))
+    avg_price = float(matched.get("average_buy_price", 0))
+    total_cost = round(quantity * avg_price, 2)
+
+    price_str = await execute_with_retry(rh.get_latest_price, symbol)
+    current_price = float(price_str[0]) if price_str and price_str[0] else 0.0
+    current_value = round(quantity * current_price, 2)
+    unrealized_gain = round(current_value - total_cost, 2)
+    unrealized_pct = round((unrealized_gain / total_cost * 100), 2) if total_cost else 0.0
+
+    logger.info(f"Position for {symbol}: {quantity} shares, unrealized={unrealized_gain}")
+    return create_success_response({
+        "symbol": symbol,
+        "quantity": quantity,
+        "average_buy_price": round(avg_price, 4),
+        "total_cost": total_cost,
+        "current_price": round(current_price, 4),
+        "current_value": current_value,
+        "unrealized_gain_loss": unrealized_gain,
+        "unrealized_gain_loss_pct": unrealized_pct,
+        "shares_held_for_sells": float(matched.get("shares_held_for_sells", 0)),
+        "updated_at": matched.get("updated_at", ""),
+    })

@@ -14,6 +14,7 @@ from mcp_robinhood.tools.robinhood_account_tools import (
     get_account_details,
     get_account_info,
     get_portfolio,
+    get_position_for_symbol,
     get_positions,
 )
 from mcp_robinhood.tools.robinhood_advanced_portfolio_tools import (
@@ -202,6 +203,16 @@ async def account_details() -> dict[str, Any]:
 async def positions() -> dict[str, Any]:
     """Gets current stock positions with quantities and values."""
     return await get_positions()
+
+
+@mcp.tool()
+async def stock_position(symbol: str) -> dict[str, Any]:
+    """Gets current position for a single stock including quantity, cost basis, current value, and unrealized P&L.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "AAPL")
+    """
+    return await get_position_for_symbol(symbol)
 
 
 @mcp.tool()
