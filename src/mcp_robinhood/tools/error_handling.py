@@ -222,6 +222,13 @@ async def execute_with_retry(
     auth_retry_count = 0
     max_auth_retries = 1
 
+    try:
+        auth_ok = await asyncio.wait_for(session_manager.ensure_authenticated(), timeout=30)
+    except TimeoutError:
+        raise AuthenticationError("Session authentication timed out after 30 seconds")
+    if not auth_ok:
+        raise AuthenticationError("Session authentication failed before API call")
+
     for attempt in range(max_retries + 1):
         try:
             # Apply rate limiting if enabled

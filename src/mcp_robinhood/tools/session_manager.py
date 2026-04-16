@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -42,13 +42,7 @@ class SessionManager:
         self._failed_login_attempts = 0
 
     def is_session_valid(self) -> bool:
-        if not self._is_authenticated or not self.login_time:
-            return False
-        elapsed = datetime.now() - self.login_time
-        if elapsed > timedelta(hours=self.session_timeout_hours):
-            logger.info(f"Session expired after {elapsed}")
-            return False
-        return True
+        return self._is_authenticated
 
     def update_last_successful_call(self) -> None:
         self.last_successful_call = datetime.now()
@@ -113,10 +107,10 @@ class SessionManager:
             try:
                 login_result = await asyncio.wait_for(
                     loop.run_in_executor(None, self._do_login),
-                    timeout=150,
+                    timeout=25,
                 )
             except TimeoutError:
-                logger.error("Authentication timed out after 150 seconds")
+                logger.error("Authentication timed out after 25 seconds")
                 self._increment_failed_attempts()
                 return False
 
@@ -171,7 +165,7 @@ class SessionManager:
             return await self._authenticate()
 
     def get_session_info(self) -> dict[str, Any]:
-        info: dict[str, Any] = {
+        return {
             "is_authenticated": self._is_authenticated,
             "is_valid": self.is_session_valid(),
             "username": self.username,
@@ -181,18 +175,9 @@ class SessionManager:
                 if self.last_successful_call
                 else None
             ),
-            "session_timeout_hours": self.session_timeout_hours,
             "failed_login_attempts": self._failed_login_attempts,
             "max_failed_attempts": self.max_failed_attempts,
         }
-        if self.login_time:
-            remaining = timedelta(hours=self.session_timeout_hours) - (
-                datetime.now() - self.login_time
-            )
-            info["time_until_expiry"] = (
-                str(remaining) if remaining.total_seconds() > 0 else "Expired"
-            )
-        return info
 
     async def logout(self) -> None:
         async with self._lock:
