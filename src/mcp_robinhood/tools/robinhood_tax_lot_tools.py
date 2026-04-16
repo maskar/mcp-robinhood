@@ -39,15 +39,21 @@ def _get_position_data(instrument_id: str) -> dict:
     return {}
 
 
-def _get_filled_orders(instrument_id: str) -> list[dict]:
+def _get_orders(instrument_id: str, states: list[str] | None = None) -> list[dict]:
     orders = request_get(
         "https://api.robinhood.com/orders/",
         "pagination",
         {"instrument": f"https://api.robinhood.com/instruments/{instrument_id}/"},
     )
-    filled = [o for o in (orders or []) if o and o.get("state") == "filled"]
-    filled.sort(key=lambda x: x.get("created_at", ""))
-    return filled
+    result = [o for o in (orders or []) if o]
+    if states:
+        result = [o for o in result if o.get("state") in states]
+    result.sort(key=lambda x: x.get("created_at", ""))
+    return result
+
+
+def _get_filled_orders(instrument_id: str) -> list[dict]:
+    return _get_orders(instrument_id, states=["filled"])
 
 
 def _days_held(ts: str) -> int:
@@ -178,4 +184,62 @@ async def get_tax_lots(symbol: str) -> dict[str, Any]:
         "lots": lots,
         "lot_count": len(lots),
         "method": method,
+    })
+
+
+@handle_robin_stocks_errors
+async def get_stock_transactions(symbol: str) -> dict[str, Any]:
+    """Gets order history for a stock including filled and open orders.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "CAVA")
+    """
+    if not validate_symbol(symbol):
+        return create_error_response(ValueError(f"Invalid symbol: {symbol}"), "symbol validation")
+
+    symbol = symbol.strip().upper()
+    authenticated, err = await ensure_authenticated_session()
+    if not authenticated:
+        return create_error_response(Exception(err or "Not authenticated"), "auth")
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    instrument_id = await loop.run_in_executor(None, _instrument_id_for_symbol, symbol)
+    if not instrument_id:
+        return create_no_data_response(f"No instrument found for symbol: {symbol}", {"symbol": symbol})
+
+    orders = await loop.run_in_executor(None, _get_orders, instrument_id, None)
+
+    if not orders:
+        return create_no_data_response(f"No orders found for {symbol}", {"symbol": symbol})
+
+    transactions = []
+    for o in reversed(orders):  # newest first
+        execs = o.get("executions", [])
+        total_qty = sum(float(e["quantity"]) for e in execs)
+        transactions.append({
+            "date": o.get("created_at", "")[:10],
+            "side": o.get("side"),
+            "state": o.get("state"),
+            "quantity": float(o.get("quantity", 0)),
+            "filled_quantity": total_qty,
+            "average_price": float(o["average_price"]) if o.get("average_price") else None,
+            "limit_price": float(o["price"]) if o.get("price") else None,
+            "stop_price": float(o["stop_price"]) if o.get("stop_price") else None,
+            "order_type": o.get("type"),
+            "time_in_force": o.get("time_in_force"),
+            "order_id": o.get("id"),
+        })
+
+    filled = [t for t in transactions if t["state"] == "filled"]
+    open_orders = [t for t in transactions if t["state"] in ("queued", "unconfirmed", "confirmed", "partially_filled")]
+
+    logger.info(f"Transactions for {symbol}: {len(transactions)} total, {len(open_orders)} open")
+    return create_success_response({
+        "symbol": symbol,
+        "total_orders": len(transactions),
+        "open_orders": open_orders,
+        "filled_orders": filled,
+        "all_orders": transactions,
     })
