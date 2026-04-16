@@ -66,7 +66,7 @@ from mcp_robinhood.tools.robinhood_stock_tools import (
     get_stock_quote_by_id,
     search_stocks,
 )
-from mcp_robinhood.tools.robinhood_tax_lot_tools import get_stock_transactions, get_tax_lots
+from mcp_robinhood.tools.robinhood_tax_lot_tools import get_closed_lots, get_stock_transactions, get_tax_lots
 from mcp_robinhood.tools.robinhood_tools import list_available_tools
 from mcp_robinhood.tools.robinhood_user_profile_tools import (
     get_account_profile,
@@ -621,6 +621,16 @@ async def stock_transactions(symbol: str) -> dict[str, Any]:
         symbol: Stock ticker symbol (e.g., "CAVA")
     """
     return await get_stock_transactions(symbol)
+
+
+@mcp.tool()
+async def closed_lots(symbol: str) -> dict[str, Any]:
+    """Gets closed (sold) tax lots with realized gain/loss for a stock.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "CAVA")
+    """
+    return await get_closed_lots(symbol)
 
 
 # --- Server ---

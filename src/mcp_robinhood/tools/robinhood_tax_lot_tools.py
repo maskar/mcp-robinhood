@@ -77,6 +77,77 @@ def _build_buy_lots(orders: list[dict]) -> list[dict]:
     return lots
 
 
+def _build_sell_executions(orders: list[dict]) -> list[dict]:
+    """Extract all sell executions sorted chronologically."""
+    sells = []
+    for o in orders:
+        if o["side"] != "sell":
+            continue
+        for e in o.get("executions", []):
+            ts = e.get("timestamp", o.get("created_at", ""))
+            sells.append({
+                "qty": float(e["quantity"]),
+                "price": float(e["price"]),
+                "date": ts,
+                "settlement_date": e.get("settlement_date", ""),
+            })
+    sells.sort(key=lambda x: x["date"])
+    return sells
+
+
+def _match_closed_lots(
+    all_buy_lots: list[dict],
+    open_lots: list[dict],
+    sell_executions: list[dict],
+) -> list[dict]:
+    """Identify closed lots and assign sell proceeds via FIFO matching."""
+    open_keys = {(lot["date"], lot["price"], lot["qty"]) for lot in open_lots}
+    closed_raw = [lot for lot in all_buy_lots if (lot["date"], lot["price"], lot["qty"]) not in open_keys]
+    closed_raw.sort(key=lambda x: x["date"])
+
+    # Assign sell proceeds to closed lots via FIFO (oldest closed lot gets oldest sell price)
+    sell_queue = list(sell_executions)
+    sell_idx = 0
+    sell_remaining = sell_queue[0]["qty"] if sell_queue else 0.0
+
+    result = []
+    for lot in closed_raw:
+        lot_remaining = lot["qty"]
+        proceeds = 0.0
+
+        while lot_remaining > 1e-6 and sell_idx < len(sell_queue):
+            sell = sell_queue[sell_idx]
+            matched = min(lot_remaining, sell_remaining)
+            proceeds += matched * sell["price"]
+            sell_date = sell["date"]
+            settlement = sell.get("settlement_date", "")
+            lot_remaining -= matched
+            sell_remaining -= matched
+            if sell_remaining < 1e-6:
+                sell_idx += 1
+                sell_remaining = sell_queue[sell_idx]["qty"] if sell_idx < len(sell_queue) else 0.0
+
+        cost = lot["qty"] * lot["price"]
+        gain = proceeds - cost
+        acq_ts = lot["date"]
+        days = _days_held(acq_ts)
+
+        result.append({
+            "acquisition_date": acq_ts[:10],
+            "sale_date": sell_date[:10] if proceeds else "",
+            "settlement_date": settlement,
+            "quantity": round(lot["qty"], 8),
+            "cost_per_share": round(lot["price"], 4),
+            "total_cost": round(cost, 2),
+            "proceeds": round(proceeds, 2),
+            "realized_gain_loss": round(gain, 2),
+            "holding_days": days,
+            "term": "long" if days >= 365 else "short",
+        })
+
+    return result
+
+
 def _solve_lots(buy_lots: list[dict], target_qty: float, target_cost: float) -> list[dict] | None:
     """Find the subset of buy lots matching target quantity and cost basis.
 
@@ -242,4 +313,68 @@ async def get_stock_transactions(symbol: str) -> dict[str, Any]:
         "open_orders": open_orders,
         "filled_orders": filled,
         "all_orders": transactions,
+    })
+
+
+@handle_robin_stocks_errors
+async def get_closed_lots(symbol: str) -> dict[str, Any]:
+    """Gets closed (sold) tax lots with realized gain/loss for a stock.
+
+    Args:
+        symbol: Stock ticker symbol (e.g., "CAVA")
+    """
+    if not validate_symbol(symbol):
+        return create_error_response(ValueError(f"Invalid symbol: {symbol}"), "symbol validation")
+
+    symbol = symbol.strip().upper()
+    authenticated, err = await ensure_authenticated_session()
+    if not authenticated:
+        return create_error_response(Exception(err or "Not authenticated"), "auth")
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+
+    instrument_id = await loop.run_in_executor(None, _instrument_id_for_symbol, symbol)
+    if not instrument_id:
+        return create_no_data_response(f"No instrument found for symbol: {symbol}", {"symbol": symbol})
+
+    position, orders = await asyncio.gather(
+        loop.run_in_executor(None, _get_position_data, instrument_id),
+        loop.run_in_executor(None, _get_filled_orders, instrument_id),
+    )
+
+    if not orders:
+        return create_no_data_response(f"No order history for {symbol}", {"symbol": symbol})
+
+    position_qty = float(position.get("quantity", 0))
+    clearing_cost = float(position.get("clearing_cost_basis") or 0)
+
+    buy_lots = _build_buy_lots(orders)
+    sell_executions = _build_sell_executions(orders)
+
+    if not sell_executions:
+        return create_no_data_response(f"No closed lots for {symbol} — no sell orders found", {"symbol": symbol})
+
+    total_bought = sum(lot["qty"] for lot in buy_lots)
+    total_sold = total_bought - position_qty
+
+    # Identify open lots
+    open_lots_raw = _solve_lots(buy_lots, position_qty, clearing_cost) if clearing_cost else None
+    if open_lots_raw is None:
+        open_lots_raw = _fifo_lots(buy_lots, total_sold)
+
+    closed_lots = _match_closed_lots(buy_lots, open_lots_raw, sell_executions)
+
+    total_cost = sum(lot["total_cost"] for lot in closed_lots)
+    total_proceeds = sum(lot["proceeds"] for lot in closed_lots)
+    total_gain = total_proceeds - total_cost
+
+    logger.info(f"Closed lots for {symbol}: {len(closed_lots)} lots, realized gain={total_gain:.2f}")
+    return create_success_response({
+        "symbol": symbol,
+        "closed_lot_count": len(closed_lots),
+        "total_cost_basis": round(total_cost, 2),
+        "total_proceeds": round(total_proceeds, 2),
+        "total_realized_gain_loss": round(total_gain, 2),
+        "lots": closed_lots,
     })
