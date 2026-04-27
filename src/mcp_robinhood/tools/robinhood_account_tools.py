@@ -109,110 +109,75 @@ async def get_account_details() -> dict[str, Any]:
     """
     Retrieves comprehensive account details including buying power and cash balances.
 
-    All monetary values are returned as currency objects with amount, currency_code,
-    and currency_id fields for internationalization support.
+    Aggregates data from load_account_profile (cash, buying power, margin balances)
+    and load_portfolio_profile (equity), plus crypto positions for total_equity.
+    Replaces the prior load_phoenix_account source — that endpoint now blocks
+    non-mobile-app TLS fingerprints at the CloudFront edge.
 
     Returns:
-        A JSON object containing detailed account information in the result field:
-        {
-            "result": {
-                "portfolio_equity": {
-                    "amount": "9723.99",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "total_equity": {
-                    "amount": "9723.99",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "account_buying_power": {
-                    "amount": "1029.63",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "options_buying_power": {
-                    "amount": "1029.63",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "crypto_buying_power": {
-                    "amount": "1029.63",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "uninvested_cash": {
-                    "amount": "7629.63",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "withdrawable_cash": {
-                    "amount": "1029.63",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "cash_available_from_instant_deposits": {
-                    "amount": "0",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "cash_held_for_orders": {
-                    "amount": "0",
-                    "currency_code": "USD",
-                    "currency_id": "1072fc76-1862-41ab-82c2-485837590762"
-                },
-                "near_margin_call": false,
-                "status": "success"
-            }
-        }
+        A JSON object with account details in the result field. Monetary fields
+        are decimal strings (e.g. "9723.99"). near_margin_call is bool.
     """
+    from mcp_robinhood.tools.robinhood_crypto_tools import get_crypto_positions
+
     log_api_call("get_account_details")
 
-    # Get account data with retry logic
-    account_response = await execute_with_retry(rh.load_phoenix_account)
-
-    if not account_response or not account_response.get("results"):
+    account = await execute_with_retry(rh.load_account_profile)
+    if not account:
         return create_no_data_response("No account data found")
+    account = sanitize_api_response(account)
 
-    # Extract account data from results (it's a list with first element containing data)
-    account_data = account_response["results"][0] if account_response["results"] else {}
+    portfolio = await execute_with_retry(rh.load_portfolio_profile)
+    portfolio = sanitize_api_response(portfolio) if portfolio else {}
 
-    # Sanitize sensitive data
-    account_data = sanitize_api_response(account_data)
+    margin_balances = account.get("margin_balances") or {}
+    portfolio_equity = portfolio.get("equity")
 
-    # Helper function to extract amount from currency objects
-    def get_currency_amount(field_data: Any) -> str:
-        if isinstance(field_data, dict) and "amount" in field_data:
-            return str(field_data["amount"])
-        return str(field_data) if field_data is not None else "N/A"
+    crypto_equity: float | None = None
+    try:
+        crypto_resp = await get_crypto_positions()
+        crypto_positions = crypto_resp.get("result", {}).get("positions", [])
+        crypto_equity = sum(_to_float(p.get("equity")) for p in crypto_positions)
+    except Exception as exc:
+        logger.warning(f"Failed to compute crypto equity for account_details: {exc}")
+
+    total_equity: float | None = None
+    if portfolio_equity is not None and crypto_equity is not None:
+        total_equity = _to_float(portfolio_equity) + crypto_equity
 
     logger.info("Successfully retrieved account details.")
     return create_success_response(
         {
-            "portfolio_equity": get_currency_amount(
-                account_data.get("portfolio_equity")
+            "account_number": account.get("account_number", "N/A"),
+            "account_type": account.get("type", "N/A"),
+            "portfolio_equity": portfolio_equity if portfolio_equity is not None else "N/A",
+            "crypto_equity": crypto_equity,
+            "total_equity": total_equity,
+            "account_buying_power": account.get("buying_power", "N/A"),
+            "options_buying_power": account.get("buying_power", "N/A"),
+            "crypto_buying_power": account.get("crypto_buying_power", "N/A"),
+            "day_trade_buying_power": margin_balances.get(
+                "day_trade_buying_power", "N/A"
             ),
-            "total_equity": get_currency_amount(account_data.get("total_equity")),
-            "account_buying_power": get_currency_amount(
-                account_data.get("account_buying_power")
+            "overnight_buying_power": margin_balances.get(
+                "overnight_buying_power", "N/A"
             ),
-            "options_buying_power": get_currency_amount(
-                account_data.get("options_buying_power")
+            "uninvested_cash": account.get("cash", "N/A"),
+            "withdrawable_cash": account.get("cash_available_for_withdrawal", "N/A"),
+            "cash_available_from_instant_deposits": margin_balances.get(
+                "eligible_deposit_as_instant", "N/A"
             ),
-            "crypto_buying_power": get_currency_amount(
-                account_data.get("crypto_buying_power")
+            "cash_held_for_orders": account.get("cash_held_for_orders", "N/A"),
+            "unsettled_funds": account.get("unsettled_funds", "N/A"),
+            "unsettled_debit": account.get("unsettled_debit", "N/A"),
+            "margin_amount_borrowed": margin_balances.get(
+                "settled_amount_borrowed", "N/A"
             ),
-            "uninvested_cash": get_currency_amount(account_data.get("uninvested_cash")),
-            "withdrawable_cash": get_currency_amount(
-                account_data.get("withdrawable_cash")
+            "margin_outstanding_interest": margin_balances.get(
+                "outstanding_interest", "N/A"
             ),
-            "cash_available_from_instant_deposits": get_currency_amount(
-                account_data.get("cash_available_from_instant_deposits")
-            ),
-            "cash_held_for_orders": get_currency_amount(
-                account_data.get("cash_held_for_orders")
-            ),
-            "near_margin_call": account_data.get("near_margin_call", "N/A"),
+            "near_margin_call": False,
+            "pattern_day_trader": margin_balances.get("is_pdt_forever", False),
         }
     )
 
