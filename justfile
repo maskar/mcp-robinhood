@@ -58,6 +58,7 @@ up:
         -e MCP_PORT=8080 \
         --dns 1.1.1.1 --dns 8.8.8.8 \
         -v mcp-robinhood_robinhood-tokens:/home/app/.tokens \
+        -v mcp-robinhood_fastmcp-oauth:/home/app/.local/share/fastmcp/oauth-proxy \
         --memory 512m \
         --cpus 0.5 \
         mcp-robinhood:latest"
