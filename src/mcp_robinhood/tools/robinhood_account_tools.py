@@ -46,30 +46,59 @@ async def get_account_info() -> dict[str, Any]:
     )
 
 
+def _to_float(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @handle_robin_stocks_errors
 async def get_portfolio() -> dict[str, Any]:
     """
     Provides a high-level overview of the portfolio.
 
+    `equity` and `market_value` are brokerage-only (stocks/options) — that's how
+    Robinhood's portfolio_profile endpoint defines them. `crypto_equity` and
+    `total_equity` aggregate crypto holdings on top so the user sees their
+    full account value.
+
     Returns:
         A JSON object containing the portfolio overview in the result field.
     """
+    from mcp_robinhood.tools.robinhood_crypto_tools import get_crypto_positions
+
     log_api_call("get_portfolio")
 
-    # Get portfolio data with retry logic
     portfolio = await execute_with_retry(rh.load_portfolio_profile)
 
     if not portfolio:
         return create_no_data_response("Portfolio data not available")
 
-    # Sanitize sensitive data
     portfolio = sanitize_api_response(portfolio)
+
+    # Aggregate crypto equity. Failures here shouldn't drop the brokerage data —
+    # log and report crypto_equity as None so the caller can tell.
+    crypto_equity: float | None = None
+    try:
+        crypto_resp = await get_crypto_positions()
+        crypto_positions = crypto_resp.get("result", {}).get("positions", [])
+        crypto_equity = sum(_to_float(p.get("equity")) for p in crypto_positions)
+    except Exception as exc:
+        logger.warning(f"Failed to compute crypto equity for portfolio: {exc}")
+
+    brokerage_equity = _to_float(portfolio.get("equity"))
+    total_equity: float | None = (
+        brokerage_equity + crypto_equity if crypto_equity is not None else None
+    )
 
     logger.info("Successfully retrieved portfolio overview.")
     return create_success_response(
         {
             "market_value": portfolio.get("market_value", "N/A"),
             "equity": portfolio.get("equity", "N/A"),
+            "crypto_equity": crypto_equity,
+            "total_equity": total_equity,
             "buying_power": portfolio.get("buying_power", "N/A"),
         }
     )
