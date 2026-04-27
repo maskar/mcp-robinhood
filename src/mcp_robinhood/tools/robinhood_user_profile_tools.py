@@ -52,9 +52,7 @@ async def get_account_profile() -> dict[str, Any]:
     logger.info("Getting account profile")
 
     # Get account profile
-    profile_data = await execute_with_retry(
-        func=rh.load_account_profile, func_name="load_account_profile", max_retries=3
-    )
+    profile_data = await execute_with_retry(rh.load_account_profile, max_retries=3)
 
     if not profile_data:
         logger.warning("No account profile data found")
@@ -107,9 +105,7 @@ async def get_basic_profile() -> dict[str, Any]:
     logger.info("Getting basic profile")
 
     # Get basic profile
-    profile_data = await execute_with_retry(
-        func=rh.load_basic_profile, func_name="load_basic_profile", max_retries=3
-    )
+    profile_data = await execute_with_retry(rh.load_basic_profile, max_retries=3)
 
     if not profile_data:
         logger.warning("No basic profile data found")
@@ -158,11 +154,7 @@ async def get_investment_profile() -> dict[str, Any]:
     logger.info("Getting investment profile")
 
     # Get investment profile
-    profile_data = await execute_with_retry(
-        func=rh.load_investment_profile,
-        func_name="load_investment_profile",
-        max_retries=3,
-    )
+    profile_data = await execute_with_retry(rh.load_investment_profile, max_retries=3)
 
     if not profile_data:
         logger.warning("No investment profile data found")
@@ -209,9 +201,7 @@ async def get_security_profile() -> dict[str, Any]:
     logger.info("Getting security profile")
 
     # Get security profile
-    profile_data = await execute_with_retry(
-        func=rh.load_security_profile, func_name="load_security_profile", max_retries=3
-    )
+    profile_data = await execute_with_retry(rh.load_security_profile, max_retries=3)
 
     if not profile_data:
         logger.warning("No security profile data found")
@@ -258,9 +248,7 @@ async def get_user_profile() -> dict[str, Any]:
     logger.info("Getting user profile")
 
     # Get user profile
-    profile_data = await execute_with_retry(
-        func=rh.load_user_profile, func_name="load_user_profile", max_retries=3
-    )
+    profile_data = await execute_with_retry(rh.load_user_profile, max_retries=3)
 
     if not profile_data:
         logger.warning("No user profile data found")
