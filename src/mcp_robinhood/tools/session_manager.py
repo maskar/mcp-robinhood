@@ -2,13 +2,48 @@
 
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import robin_stocks.robinhood as rh
+import robin_stocks.robinhood.helper as rh_helper
 
 from mcp_robinhood.logging_config import logger
+
+
+# URL fragments that legitimately need to return 401/403 bodies for parsing
+# (login + Robinhood's verification workflow endpoints). robin_stocks' login()
+# expects to read the body of these responses to discover MFA challenges.
+_AUTH_ENDPOINT_FRAGMENTS = (
+    "/oauth2/",
+    "/pathfinder/",
+    "/push/",
+    "/challenge/",
+    "/auth/",
+)
+
+
+def _raise_on_auth_failure(response: Any, *args: Any, **kwargs: Any) -> None:
+    """Raise on 401/403 so robin_stocks can't swallow expired-token responses.
+
+    Without this, an expired Robinhood session returns empty data on data
+    endpoints instead of an exception, and the retry/re-auth path in
+    execute_with_retry never fires.
+
+    Skipped for login/verification endpoints — robin_stocks parses 401/403
+    bodies on those to handle MFA workflows.
+    """
+    if response.status_code not in (401, 403):
+        return
+    url = (response.request.url or "") if response.request else ""
+    if any(fragment in url for fragment in _AUTH_ENDPOINT_FRAGMENTS):
+        return
+    response.raise_for_status()
+
+
+if _raise_on_auth_failure not in rh_helper.SESSION.hooks.get("response", []):
+    rh_helper.SESSION.hooks.setdefault("response", []).append(_raise_on_auth_failure)
 
 
 class SessionManager:
@@ -42,7 +77,17 @@ class SessionManager:
         self._failed_login_attempts = 0
 
     def is_session_valid(self) -> bool:
-        return self._is_authenticated
+        if not self._is_authenticated or not self.login_time:
+            return False
+        age = datetime.now() - self.login_time
+        if age >= timedelta(hours=self.session_timeout_hours):
+            logger.info(
+                f"Session aged {age} >= {self.session_timeout_hours}h timeout, "
+                "marking invalid"
+            )
+            self._is_authenticated = False
+            return False
+        return True
 
     def update_last_successful_call(self) -> None:
         self.last_successful_call = datetime.now()
@@ -95,46 +140,64 @@ class SessionManager:
                 return True
             return await self._authenticate()
 
+    async def _attempt_login(self) -> bool:
+        """One login + probe attempt. Returns True only when probe succeeds."""
+        loop = asyncio.get_event_loop()
+        try:
+            login_result = await asyncio.wait_for(
+                loop.run_in_executor(None, self._do_login),
+                timeout=25,
+            )
+        except TimeoutError:
+            logger.error("Authentication timed out after 25 seconds")
+            return False
+        except Exception as e:
+            logger.error(f"Login error: {e}")
+            return False
+
+        if not login_result:
+            return False
+
+        # Probe with a real API call — robin_stocks may have loaded a cached
+        # session that "succeeded" locally but holds a token Robinhood already
+        # invalidated. The 401 response hook turns that into an exception here.
+        try:
+            user_profile = await loop.run_in_executor(None, rh.load_user_profile)
+        except Exception as e:
+            logger.warning(f"Login probe failed (likely stale cached session): {e}")
+            return False
+
+        if not user_profile:
+            logger.warning("Login probe returned empty user profile")
+            return False
+
+        self.login_time = datetime.now()
+        self._is_authenticated = True
+        logger.info(f"Authenticated user: {self.username}")
+        return True
+
     async def _authenticate(self) -> bool:
         if not self.username or not self.password:
             logger.error("No credentials available for authentication")
             return False
 
-        try:
-            logger.info(f"Authenticating user: {self.username}")
-            loop = asyncio.get_event_loop()
+        logger.info(f"Authenticating user: {self.username}")
 
-            try:
-                login_result = await asyncio.wait_for(
-                    loop.run_in_executor(None, self._do_login),
-                    timeout=25,
-                )
-            except TimeoutError:
-                logger.error("Authentication timed out after 25 seconds")
-                self._increment_failed_attempts()
-                return False
+        if await self._attempt_login():
+            self._failed_login_attempts = 0
+            return True
 
-            if not login_result:
-                self._increment_failed_attempts()
-                return False
-
-            # Verify login
-            user_profile = await loop.run_in_executor(None, rh.load_user_profile)
-            if user_profile:
-                self.login_time = datetime.now()
-                self._is_authenticated = True
+        # First attempt failed. If a cached session file exists, it's likely
+        # stale — clear it and try one fresh login before counting a failure.
+        if self._get_pickle_file_path().exists():
+            logger.warning("Auth failed with cached session; clearing and retrying fresh")
+            self._clear_pickle_file()
+            if await self._attempt_login():
                 self._failed_login_attempts = 0
-                logger.info(f"Authenticated user: {self.username}")
                 return True
 
-            logger.error("Login verification failed: could not load user profile")
-            self._increment_failed_attempts()
-            return False
-
-        except Exception as e:
-            logger.error(f"Authentication failed: {e}")
-            self._increment_failed_attempts()
-            return False
+        self._increment_failed_attempts()
+        return False
 
     def _do_login(self) -> bool:
         """Perform the actual robin_stocks login call."""
@@ -150,7 +213,10 @@ class SessionManager:
                 logger.info("Login successful")
                 return True
 
-            logger.error("Login failed — no access token in response")
+            logger.error(
+                "Login failed — rh.login returned %s without access_token",
+                type(result).__name__,
+            )
             return False
 
         except Exception as e:

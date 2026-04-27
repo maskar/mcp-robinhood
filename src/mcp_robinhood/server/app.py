@@ -79,7 +79,10 @@ from mcp_robinhood.tools.robinhood_user_profile_tools import (
     get_security_profile,
     get_user_profile,
 )
-from mcp_robinhood.tools.session_manager import get_session_manager
+from mcp_robinhood.tools.session_manager import (
+    force_fresh_authentication,
+    get_session_manager,
+)
 
 # Fetch Vault secrets early so they override settings
 from mcp_robinhood.vault import fetch_secrets, get_secret
@@ -169,6 +172,26 @@ async def session_status() -> dict[str, Any]:
     session_manager = get_session_manager()
     session_info = session_manager.get_session_info()
     return {"result": {**session_info, "status": "success"}}
+
+
+@mcp.tool()
+async def force_fresh_login() -> dict[str, Any]:
+    """Force a fresh Robinhood login: clears the cached session and re-authenticates.
+
+    Use when calls are returning empty results due to a silently expired session.
+    Requires ROBINHOOD_USERNAME / ROBINHOOD_PASSWORD (and ROBINHOOD_MFA_SECRET for
+    auto-TOTP) to be set in the server environment.
+    """
+    success, error = await force_fresh_authentication()
+    if success:
+        return {"result": {"status": "success", "message": "Fresh login successful"}}
+    return {
+        "result": {
+            "status": "error",
+            "error": error or "Fresh login failed",
+            "error_type": "authentication",
+        }
+    }
 
 
 @mcp.tool()
