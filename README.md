@@ -1,10 +1,32 @@
 # mcp-robinhood
 
-Read-only MCP server for Robinhood portfolio data. Provides AI agents with
-access to account holdings, market data, and research — no trading capabilities.
+MCP server for Robinhood portfolio data. Provides AI agents with access to
+account holdings, market data, research, and explicitly confirmed stock limit
+order operations.
 
 Forked from [open-stocks-mcp](https://github.com/Open-Agent-Tools/open-stocks-mcp)
-(Apache 2.0). Stripped to Robinhood-only, read-only tools.
+(Apache 2.0). Stripped to Robinhood-only tools with a read-heavy default surface.
+
+## Safety model
+
+Most tools are read-only. The only mutating tools are the stock order helpers
+listed under **Limited trading tools** below.
+
+Trading support is intentionally narrow:
+
+- stock limit buys only — no market buys
+- stock limit sells only — no market sells
+- open stock order cancellation only
+- no options order placement
+- no crypto order placement
+- no transfers, deposits, withdrawals, or account setting changes
+
+Each mutating tool requires an explicit `confirm=true` argument. Calls without
+that flag return an error and do not submit anything to Robinhood.
+
+Treat deployments with Robinhood credentials as sensitive financial automation.
+Use OAuth allowlisting, private deployment paths, and account credentials with
+the minimum operational exposure possible.
 
 ## Features
 
@@ -79,6 +101,22 @@ Forked from [open-stocks-mcp](https://github.com/Open-Agent-Tools/open-stocks-mc
 | `all_option_positions` | All option positions ever held |
 | `open_option_positions` | Currently open positions |
 | `open_option_positions_with_details` | Open positions with call/put enrichment |
+
+### Tax Lots & Transactions (3 tools, read-only)
+
+| Tool | Description |
+|------|-------------|
+| `tax_lots` | FIFO tax lot reconstruction for a stock position |
+| `stock_transactions` | Filled and open stock order history for a symbol |
+| `closed_lots` | Closed tax lots with realized gain/loss for a stock |
+
+### Limited trading tools (3 tools, mutating)
+
+| Tool | Description |
+|------|-------------|
+| `buy_limit` | Place a stock limit buy order; requires `confirm=true` |
+| `sell_limit` | Place a stock limit sell order; requires `confirm=true` |
+| `cancel_stock_order` | Cancel an open stock order; requires `confirm=true` |
 
 ### User Profile (7 tools)
 
@@ -162,7 +200,9 @@ mcp-robinhood/
 │   │   ├── robinhood_dividend_tools.py
 │   │   ├── robinhood_market_data_tools.py
 │   │   ├── robinhood_options_tools.py
+│   │   ├── robinhood_order_tools.py   # limited confirmed stock order operations
 │   │   ├── robinhood_stock_tools.py
+│   │   ├── robinhood_tax_lot_tools.py
 │   │   ├── robinhood_user_profile_tools.py
 │   │   ├── robinhood_tools.py
 │   │   ├── session_manager.py   # Auth session with auto-refresh
@@ -180,5 +220,6 @@ mcp-robinhood/
 
 Based on [open-stocks-mcp](https://github.com/Open-Agent-Tools/open-stocks-mcp)
 by [Open Agent Tools](https://github.com/Open-Agent-Tools), licensed under
-Apache 2.0. Original trading, Schwab, and notification tools removed; retained
-read-only Robinhood tools with modified configuration and project structure.
+Apache 2.0. Schwab and notification tools were removed; Robinhood support was
+kept with a read-heavy tool surface plus the limited confirmed stock order tools
+documented above.

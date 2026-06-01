@@ -1,7 +1,6 @@
-"""MCP server for read-only Robinhood portfolio data."""
+"""MCP server for Robinhood portfolio data and limited confirmed stock order operations."""
 
 import asyncio
-import sys
 from typing import Any
 
 from fastmcp import FastMCP
@@ -56,6 +55,11 @@ from mcp_robinhood.tools.robinhood_options_tools import (
     get_option_market_data,
     get_options_chains,
 )
+from mcp_robinhood.tools.robinhood_order_tools import (
+    cancel_order,
+    place_buy_limit,
+    place_sell_limit,
+)
 from mcp_robinhood.tools.robinhood_stock_tools import (
     find_instrument_data,
     get_instruments_by_symbols,
@@ -67,8 +71,11 @@ from mcp_robinhood.tools.robinhood_stock_tools import (
     get_stock_quote_by_id,
     search_stocks,
 )
-from mcp_robinhood.tools.robinhood_order_tools import cancel_order, place_buy_limit, place_sell_limit
-from mcp_robinhood.tools.robinhood_tax_lot_tools import get_closed_lots, get_stock_transactions, get_tax_lots
+from mcp_robinhood.tools.robinhood_tax_lot_tools import (
+    get_closed_lots,
+    get_stock_transactions,
+    get_tax_lots,
+)
 from mcp_robinhood.tools.robinhood_tools import list_available_tools
 from mcp_robinhood.tools.robinhood_user_profile_tools import (
     get_account_profile,
@@ -152,7 +159,11 @@ async def _pre_register_client() -> None:
 
 mcp = FastMCP(
     "Robinhood",
-    instructions="Read-only access to Robinhood portfolio data.",
+    instructions=(
+        "Robinhood portfolio and market data access. Most tools are read-only. "
+        "The only mutating tools are limited stock order helpers that require "
+        "an explicit confirm=true argument."
+    ),
     auth=auth,
 )
 
