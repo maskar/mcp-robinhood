@@ -17,6 +17,8 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04-arm
+    env:
+      GEEKSAW_HOST: 100.118.74.32
 
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +35,11 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.GEEKSAW_DEPLOY_KEY }}" > ~/.ssh/geeksaw_deploy
           chmod 600 ~/.ssh/geeksaw_deploy
-          ssh-keyscan -T 10 geeksaw-vps >> ~/.ssh/known_hosts
+          ssh-keyscan -T 10 "$GEEKSAW_HOST" >> ~/.ssh/known_hosts
 
       - name: Prepare target
         run: |
-          ssh -i ~/.ssh/geeksaw_deploy kingpin@geeksaw-vps '
+          ssh -i ~/.ssh/geeksaw_deploy kingpin@"$GEEKSAW_HOST" '
             set -euo pipefail
             sudo install -d -o kingpin -g kingpin -m 0755 /opt/mcp-robinhood
             test -f /opt/mcp-robinhood/.env
@@ -53,11 +55,11 @@ jobs:
             --exclude='.env' \
             --exclude='logs/' \
             -e "ssh -i ~/.ssh/geeksaw_deploy" \
-            ./ kingpin@geeksaw-vps:/opt/mcp-robinhood/
+            ./ kingpin@"$GEEKSAW_HOST":/opt/mcp-robinhood/
 
       - name: Rebuild and restart container
         run: |
-          ssh -i ~/.ssh/geeksaw_deploy kingpin@geeksaw-vps '
+          ssh -i ~/.ssh/geeksaw_deploy kingpin@"$GEEKSAW_HOST" '
             set -euo pipefail
             cd /opt/mcp-robinhood
             sudo podman compose down
