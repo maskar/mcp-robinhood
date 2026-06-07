@@ -30,12 +30,26 @@ jobs:
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
 
+      - name: Wait for Tailscale reachability
+        run: |
+          for i in 1 2 3 4 5; do
+            if tailscale ping --c 1 --timeout=5s "$GEEKSAW_HOST"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.GEEKSAW_DEPLOY_KEY }}" > ~/.ssh/geeksaw_deploy
           chmod 600 ~/.ssh/geeksaw_deploy
-          ssh-keyscan -T 10 "$GEEKSAW_HOST" >> ~/.ssh/known_hosts
+          for i in 1 2 3 4 5; do
+            ssh-keyscan -T 5 "$GEEKSAW_HOST" >> ~/.ssh/known_hosts && break
+            sleep 2
+          done
+          test -s ~/.ssh/known_hosts
 
       - name: Prepare target
         run: |
