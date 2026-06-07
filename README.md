@@ -186,6 +186,10 @@ Add to your Claude Desktop MCP config:
 }
 ```
 
+## Deployment
+
+Production deploys run through GitHub Actions on pushes to `main`. The CI workflow validates the repo, then the deploy workflow syncs the source to `geeksaw-vps`, rebuilds the Podman container, and verifies the service is listening on `127.0.0.1:8081`.
+
 ## Project Structure
 
 ```text

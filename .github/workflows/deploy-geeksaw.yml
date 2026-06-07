@@ -1,0 +1,67 @@
+name: Deploy to geeksaw
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: mcp-robinhood-geeksaw-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Join Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.GEEKSAW_DEPLOY_KEY }}" > ~/.ssh/geeksaw_deploy
+          chmod 600 ~/.ssh/geeksaw_deploy
+          ssh-keyscan -T 10 geeksaw-vps >> ~/.ssh/known_hosts
+
+      - name: Prepare target
+        run: |
+          ssh -i ~/.ssh/geeksaw_deploy kingpin@geeksaw-vps '
+            set -euo pipefail
+            sudo install -d -o kingpin -g kingpin -m 0755 /opt/mcp-robinhood
+            test -f /opt/mcp-robinhood/.env
+          '
+
+      - name: Sync source to geeksaw
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='.venv' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.env' \
+            --exclude='logs/' \
+            -e "ssh -i ~/.ssh/geeksaw_deploy" \
+            ./ kingpin@geeksaw-vps:/opt/mcp-robinhood/
+
+      - name: Rebuild and restart container
+        run: |
+          ssh -i ~/.ssh/geeksaw_deploy kingpin@geeksaw-vps '
+            set -euo pipefail
+            cd /opt/mcp-robinhood
+            sudo podman compose down
+            sudo podman compose up -d --build
+            sudo podman ps --filter name=mcp-robinhood --format "{{.Names}} {{.Status}} {{.Ports}}"
+            sudo ss -tlnp | grep -q ":8081 "
+          '
