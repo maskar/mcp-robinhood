@@ -11,7 +11,6 @@ import robin_stocks.robinhood.helper as rh_helper
 
 from mcp_robinhood.logging_config import logger
 
-
 # URL fragments that legitimately need to return 401/403 bodies for parsing
 # (login + Robinhood's verification workflow endpoints). robin_stocks' login()
 # expects to read the body of these responses to discover MFA challenges.

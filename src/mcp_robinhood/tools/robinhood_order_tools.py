@@ -107,6 +107,82 @@ async def place_sell_limit(symbol: str, quantity: float, limit_price: float, con
 
 
 @handle_robin_stocks_errors
+async def get_stock_orders() -> dict[str, Any]:
+    """Gets recent stock order history."""
+    orders = rh.get_all_stock_orders()
+    if not orders:
+        return create_success_response({
+            "orders": [],
+            "count": 0,
+            "message": "No recent stock orders found",
+        })
+
+    formatted_orders: list[dict[str, Any]] = []
+    for order in orders:
+        instrument = order.get("instrument")
+        symbol = None
+        if instrument:
+            try:
+                symbol = rh.get_symbol_by_url(instrument)
+            except Exception:
+                symbol = None
+        formatted_orders.append({
+            "symbol": symbol or order.get("symbol") or "",
+            "side": str(order.get("side", "")).upper(),
+            "quantity": order.get("quantity"),
+            "average_price": order.get("average_price"),
+            "state": order.get("state"),
+            "created_at": order.get("created_at"),
+            "last_transaction_at": order.get("last_transaction_at"),
+        })
+
+    return create_success_response({
+        "orders": formatted_orders,
+        "count": len(formatted_orders),
+    })
+
+
+@handle_robin_stocks_errors
+async def get_options_orders() -> dict[str, Any]:
+    """Gets recent options order history."""
+    try:
+        orders = rh.get_all_option_orders()
+    except Exception as exc:
+        if "not implemented" in str(exc).lower():
+            return create_success_response({
+                "orders": [],
+                "count": 0,
+                "status": "not_implemented",
+                "message": "Options order history is not yet implemented by the Robinhood API.",
+            })
+        raise
+
+    if not orders:
+        return create_success_response({
+            "orders": [],
+            "count": 0,
+            "message": "No recent options orders found",
+        })
+
+    formatted_orders: list[dict[str, Any]] = []
+    for order in orders:
+        formatted_orders.append({
+            "option_type": order.get("type", ""),
+            "chain_symbol": order.get("chain_symbol", ""),
+            "side": str(order.get("direction", "")).upper(),
+            "quantity": order.get("quantity"),
+            "price": order.get("price"),
+            "state": order.get("state"),
+            "created_at": order.get("created_at"),
+        })
+
+    return create_success_response({
+        "orders": formatted_orders,
+        "count": len(formatted_orders),
+    })
+
+
+@handle_robin_stocks_errors
 async def cancel_order(order_id: str, confirm: bool) -> dict[str, Any]:
     """Cancels an open stock order by order ID.
 

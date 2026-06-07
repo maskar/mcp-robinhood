@@ -1,6 +1,7 @@
 """MCP server for Robinhood portfolio data and limited confirmed stock order operations."""
 
 import asyncio
+import sys
 from typing import Any
 
 from fastmcp import FastMCP
@@ -8,6 +9,7 @@ from fastmcp.server.auth.providers.google import GoogleProvider
 from loguru import logger
 
 from mcp_robinhood.config import settings
+from mcp_robinhood.logging_config import setup_logging
 from mcp_robinhood.tools.rate_limiter import get_rate_limiter
 from mcp_robinhood.tools.robinhood_account_tools import (
     get_account_details,
@@ -97,6 +99,11 @@ from mcp_robinhood.vault import fetch_secrets, get_secret
 fetch_secrets()
 
 
+def load_config():
+    """Load the active server configuration."""
+    return settings
+
+
 def _cfg(key: str) -> str:
     """Get value from Vault, falling back to settings."""
     return get_secret(key) or getattr(settings, key.lower(), "")
@@ -168,6 +175,35 @@ mcp = FastMCP(
 )
 
 
+def create_mcp_server(config=None):
+    """Create and configure the MCP server instance."""
+    active_config = config or load_config()
+    if config is not None:
+        setup_logging(config)
+    else:
+        setup_logging(getattr(active_config, "log_level", "INFO"))
+    return mcp
+
+
+def attempt_login(username: str, password: str) -> None:
+    """Compatibility helper for legacy tests and CLI bootstrapping."""
+    session_manager = get_session_manager()
+    session_manager.set_credentials(username, password)
+
+    try:
+        success = asyncio.run(session_manager.ensure_authenticated())
+    except Exception as exc:
+        logger.error(f"Login attempt failed: {exc}")
+        sys.exit(1)
+
+    if success:
+        logger.info("Login successful: {}", session_manager.get_session_info())
+        return
+
+    logger.error("Login failed for user: {}", username)
+    sys.exit(1)
+
+
 # --- Utility ---
 
 
@@ -211,6 +247,40 @@ async def rate_limit_status() -> dict[str, Any]:
     rate_limiter = get_rate_limiter()
     stats = rate_limiter.get_stats()
     return {"result": {**stats, "status": "success"}}
+
+
+class _DefaultMetricsCollector:
+    async def get_metrics(self) -> dict[str, Any]:
+        return {}
+
+    async def get_health_status(self) -> dict[str, Any]:
+        return {"health_status": "healthy", "issues": [], "metrics_summary": {}}
+
+
+_metrics_collector = _DefaultMetricsCollector()
+
+
+def get_metrics_collector():
+    """Return the process-wide metrics collector."""
+    return _metrics_collector
+
+
+async def metrics_summary() -> dict[str, Any]:
+    """Return the current metrics summary."""
+    collector = get_metrics_collector()
+    metrics = collector.get_metrics()
+    if asyncio.iscoroutine(metrics):
+        metrics = await metrics
+    return {"result": {**(metrics or {}), "status": "success"}}
+
+
+async def health_check() -> dict[str, Any]:
+    """Return the current server health status."""
+    collector = get_metrics_collector()
+    health = collector.get_health_status()
+    if asyncio.iscoroutine(health):
+        health = await health
+    return {"result": {**(health or {}), "status": "success"}}
 
 
 # --- Account & Portfolio ---

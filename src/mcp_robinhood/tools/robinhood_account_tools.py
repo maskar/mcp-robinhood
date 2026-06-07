@@ -253,7 +253,7 @@ async def get_position_for_symbol(symbol: str) -> dict[str, Any]:
 
     positions = await execute_with_retry(rh.get_open_stock_positions)
     if not positions:
-        return create_no_data_response(f"No open positions found", {"symbol": symbol})
+        return create_no_data_response("No open positions found", {"symbol": symbol})
 
     # Find matching position by resolving symbol for each
     matched = None
