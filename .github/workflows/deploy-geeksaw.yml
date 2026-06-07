@@ -30,10 +30,10 @@ jobs:
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
 
-      - name: Wait for Tailscale reachability
+      - name: Wait for SSH reachability
         run: |
           for i in 1 2 3 4 5; do
-            if tailscale ping --c 1 --timeout=5s "$GEEKSAW_HOST"; then
+            if timeout 5 bash -c ":</dev/tcp/$GEEKSAW_HOST/22"; then
               exit 0
             fi
             sleep 2
