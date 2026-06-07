@@ -63,6 +63,7 @@ jobs:
       - name: Sync source to geeksaw
         run: |
           rsync -az --delete \
+            --rsync-path="sudo rsync" \
             --exclude='.git' \
             --exclude='.venv' \
             --exclude='__pycache__' \
@@ -71,6 +72,10 @@ jobs:
             --exclude='logs/' \
             -e "ssh -i ~/.ssh/geeksaw_deploy" \
             ./ kingpin@"$GEEKSAW_HOST":/opt/mcp-robinhood/
+          ssh -i ~/.ssh/geeksaw_deploy kingpin@"$GEEKSAW_HOST" '
+            set -euo pipefail
+            sudo chown -R kingpin:kingpin /opt/mcp-robinhood
+          '
 
       - name: Rebuild and restart container
         run: |
