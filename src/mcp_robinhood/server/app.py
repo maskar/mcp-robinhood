@@ -1,10 +1,12 @@
 """MCP server for Robinhood portfolio data and limited confirmed stock order operations."""
 
 import asyncio
+import secrets
 import sys
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.auth import AccessToken
 from fastmcp.server.auth.providers.google import GoogleProvider
 from loguru import logger
 
@@ -112,10 +114,37 @@ def _cfg(key: str) -> str:
 # --- OAuth ---
 
 
+def _verify_internal_bearer_token(token: str) -> AccessToken | None:
+    """Authenticate a configured machine bearer token without invoking Google OAuth.
+
+    Testing-only bypass: when ``robinhood_internal_bearer_token`` is set in Vault,
+    a request presenting it as a Bearer token is authenticated as a machine client,
+    skipping the Google OAuth flow. The end-user Google auth/allowlist is unchanged.
+    """
+    expected = _cfg("robinhood_internal_bearer_token")
+    if not expected:
+        return None
+    if not token or not secrets.compare_digest(token, expected):
+        return None
+    return AccessToken(
+        token=token,
+        client_id="robinhood-internal",
+        scopes=["openid", "https://www.googleapis.com/auth/userinfo.email"],
+        claims={
+            "email": "internal@robinhood.local",
+            "auth_method": "internal_bearer",
+        },
+    )
+
+
 class _RobinhoodGoogleProvider(GoogleProvider):
-    """GoogleProvider with email allowlist."""
+    """GoogleProvider with email allowlist and optional internal bearer auth."""
 
     async def verify_token(self, token):
+        internal_token = _verify_internal_bearer_token(token)
+        if internal_token is not None:
+            return internal_token
+
         result = await super().verify_token(token)
         if result is None:
             return None
